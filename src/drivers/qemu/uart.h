@@ -29,7 +29,39 @@ static constexpr uint8 UART_INTERRUPT_FLAGS = 4;
 #define UART_INTERRUPT_CLEAR_REGISTER                (*(volatile uint16*) (UART_BASE + 0x044))
 #define UART_DMA_CONTROL_REGISTER                    (*(volatile uint16*) (UART_BASE + 0x048))
 
-void uartputc(char c);
+/* Flags for flag register */
+
+#define UART_TX_FIFO_FULL                     ((UART_FLAG_REGISTER >> 5) & 1) // 1 = FIFO full
+#define UART_RX_FIFO_EMPTY                    ((UART_FLAG_REGISTER >> 4) & 1) // 1 = FIFO empty
+#define UART_BUSY                             ((UART_FLAG_REGISTER >> 3) & 1) // 1 = Transmiting
+
+/* Baud rates */
+// #define INT_BAUD_RATE 
+
+
+/* UART initlization process */
+static inline void check_transmission() {
+ while (UART_BUSY) {
+  ;
+ }
+}
+
+static inline void disable_uart() {
+ UART_CONTROL_REGISTER &= ~(1U << 0);
+}
+
+static inline void config_integer_baud_rate(uint16 baud) {
+ UART_INTEGER_BAUD_RATE_REGISTER = baud;
+}
+
+static inline void enable_uart() {
+ UART_CONTROL_REGISTER |= (1U << 0);
+}
+
+/* Interface */
+void uart_init(); 
+void uart_put_c(char c);
+int32 uart_get_c();
 
 
 

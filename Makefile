@@ -52,7 +52,7 @@ $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S
 qemu: kernel.elf
 	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf
 
-qemu-lldb: kernel.elf
+qemu-gdb: kernel.elf
 	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf -S -s
 
 clean:
