@@ -23,7 +23,6 @@ CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O2 -mcpu=co
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 QEMUFLAGS := -M virt -cpu cortex-a57 -nographic
-
 all: kernel.elf
 
 $(BUILD_DIR) $(BUILD_DIR)/kernel $(BUILD_DIR)/drivers:
@@ -50,7 +49,7 @@ $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S
 -include $(ALL_OBJ:.o=.d)
 
 qemu: kernel.elf
-	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf
+	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf 
 
 qemu-gdb: kernel.elf
 	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf -S -s
