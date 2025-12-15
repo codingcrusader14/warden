@@ -1,62 +1,71 @@
 #include "../../drivers/qemu/uart.h"
 
-static volatile uint32 *access_register(const struct pl011 *dev, uint16 offset) {
-    const uint64 address = dev->base_address + offset;
-    return (volatile uint32*) ((void*) address);
+static inline uint32 pl011_read(enum pl011_registers offset) {
+    return *(volatile uint32*) (QEMU_PL011_BASE + offset );
 }
 
-static void calculate_divsors(const struct pl011 *dev, uint32 *integer, uint32 *fractional) {
+static inline void pl011_write(enum pl011_registers offset, uint32 value) {
+    *(volatile uint32*) (QEMU_PL011_BASE + offset) = value;
+}
+
+static void calculate_divsors(const pl011 *dev, uint32 *integer, uint32 *fractional) {
     const uint32 divisor = (64 * dev->clock) / (16 * dev->baud_rate);
 
-    *fractional = divisor & 0x3F; // lower 16 for UARTIBRD
-    *integer = (divisor >> 6) & 0xFFFF; // lower 6 for UARTFBRD
+    *fractional = divisor & 0x3F; // lower 6 for UARTFBRD
+    *integer = (divisor >> 6) & 0xFFFF; // lower 16 for UARTIBRD
 }
 
-static void check_transmission(const struct pl011 *dev) {
-    while ((*access_register(dev, FLAG_OFFSET)) & (FLAG_BUSY)) {}
+static void check_transmission() {
+    while ((pl011_read(FLAG_OFFSET)) & (FLAG_BUSY)) {}
 }
 
 static int pl011_reset_qemu(const pl011 *dev) {
-    const uint32 control_register = *access_register(dev, CONTROL_OFFSET);
-    uint32 line_control_register = *access_register(dev, LINE_CONTROL_OFFSET);
+    const uint32 control_register = pl011_read(CONTROL_OFFSET);
+    uint32 line_control_register = pl011_read(LINE_CONTROL_OFFSET);
     uint32 ibrd, fbrd;
 
     /* Disable UART */
-    *access_register(dev, CONTROL_OFFSET) = control_register & CR_UARTEN;
+    pl011_write(CONTROL_OFFSET, control_register & ~(CR_UARTEN | CR_TXE | CR_RXE));
 
     /* Wait for end of transmission */
-    check_transmission(dev);
+    check_transmission();
 
     /* Flush transmit FIFO */
-    *access_register(dev, LINE_CONTROL_OFFSET) = (line_control_register & ~LCR_FEN);
+    pl011_write(LINE_CONTROL_OFFSET, (line_control_register & ~LCR_FEN));
 
     /* Set frequency divisor (UARTIBRD and UARTFBRD) to configure speed*/
     calculate_divsors(dev, &ibrd, &fbrd);
-    *access_register(dev, INTEGER_BAUD_RATE_OFFSET) = ibrd;
-    *access_register(dev, FRACTIONAL_BAUD_RATE_OFFSET) = fbrd;
+    pl011_write(INTEGER_BAUD_RATE_OFFSET, ibrd);
+    pl011_write(FRACTIONAL_BAUD_RATE_OFFSET, fbrd);
 
     /* Reset line control */
-    *access_register(dev, LINE_CONTROL_OFFSET) = 0x0;
+    line_control_register = 0;
 
     uint32 bit_field = (dev->data_bits - 5); // maps 5 -> 0, 6 -> 1, 7 -> 2, 8 -> 3
-    *access_register(dev, LINE_CONTROL_OFFSET) |= (bit_field & 0x3) << 5;
+    line_control_register |= (bit_field & 0x3) << 5;
     
     if (dev->stop_bits == 2)
-        *access_register(dev, LINE_CONTROL_OFFSET) |= LCR_STP2;
+        line_control_register |= LCR_STP2;
 
-    *access_register(dev, LINE_CONTROL_OFFSET) |= LCR_FEN;
+    line_control_register |= LCR_FEN;
+    pl011_write(LINE_CONTROL_OFFSET, line_control_register);
 
+    /* Clear Interrupts */
+    pl011_write(INTERRUPT_CLEAR_OFFSET, 0x7FF); // bits 11:15 are reserved
+
+    /* Mask (disable) all interrupts */
+    pl011_write(INTERRUPT_MASK_SET_CLEAR_OFFSET, 0x000); // bits 11:15 are reserved
+    
     /* Reset DMA */
-    *access_register(dev, DMA_CONTROL_OFFSET) = 0x0;
+    pl011_write(DMA_CONTROL_OFFSET, 0x0);
 
     /* Enable UART transmission/receiving */
-    *access_register(dev, CONTROL_OFFSET) = (CR_TXEN | CR_UARTEN | CR_EXN);
+    pl011_write(CONTROL_OFFSET, (CR_TXE | CR_UARTEN | CR_RXE));
     
     return 0;
 }
 
 int pl011_setup_qemu(pl011 *dev) {
-    dev->base_address = QEMU_PL011_BASE;
     dev->clock = QEMU_CLOCK;
     dev->baud_rate = QEMU_BAUD_RATE;
     dev->data_bits = QEMU_DATA_BITS;
@@ -64,12 +73,24 @@ int pl011_setup_qemu(pl011 *dev) {
     return pl011_reset_qemu(dev);
 }
 
-int pl011_send_qemu(pl011 *dev, const char *data) {
-    check_transmission(dev);
+int pl011_send_qemu(const char *data) {
+    check_transmission();
     while (*data) {
-        *access_register(dev, DATA_OFFSET) = *data++;
-        check_transmission(dev);
+        pl011_write(DATA_OFFSET, *data++);
+        check_transmission();
     }
     return 0;
 }
+
+int pl011_get_char_qemu() {
+    while (pl011_read(FLAG_OFFSET) & (FLAG_RXFE)) {}
+    return pl011_read(DATA_OFFSET);
+}
+
+void pl011_put_char_qemu(char c) {
+    check_transmission();
+    pl011_write(DATA_OFFSET, c);
+}
+
+
 

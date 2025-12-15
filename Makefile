@@ -19,7 +19,7 @@ DRIVERS_OBJ += $(patsubst $(DRIVERS_SRC)/%.S, $(BUILD_DIR)/drivers/%.o, $(DRIVER
 
 ALL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ)
 
-CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O2 -mcpu=cortex-a57 -I src/kernel -I src/drivers -MMD -MP
+CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -I src/kernel -I src/drivers -MMD -MP
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 QEMUFLAGS := -M virt -cpu cortex-a57 -nographic
@@ -40,11 +40,11 @@ $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.S | $(BUILD_DIR)/kernel
-	$(CC) $(ASFLAGS) -c $< -o $@
+	$(CC) $(ASFLAGS) -g -c $< -o $@
 
 $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S
 	@mkdir -p $(dir $@)
-	$(CC) $(ASFLAGS) -c $< -o $@
+	$(CC) $(ASFLAGS) -g -c $< -o $@
 
 -include $(ALL_OBJ:.o=.d)
 
