@@ -1,13 +1,17 @@
 #include <stdint.h>
 #include <stddef.h>
-#include "../drivers/qemu/uart.h" 
+#include "../drivers/qemu/pl011.h" 
 
-void kernel_main (void) {
+char buffer[10];
+
+void kernel_main(void) {
     pl011 serial;
     pl011_setup_qemu(&serial);
-    char a;
-    pl011_send_qemu("Please enter a character: ");
-    a = pl011_get_char_qemu();
-    pl011_put_char_qemu(a);
+
     
+    send_message("Ready to receive...\n");
+    char a = get_char();
+    send_message("Received: ");
+    put_char(a);
+    put_char('\n');
 }

@@ -17,7 +17,15 @@ SECTIONS
       *(.text)
   } : text
 
-  .rodata : {
+
+  .vector_table : {
+    . = ALIGN(0x800);
+    vtable_start = .;
+    KEEP(*(.vector_table))
+    . = . + 0x800; /* 2KB vector table */
+  }
+
+    .rodata : {
     *(.rodata)
   } : rodata
     
