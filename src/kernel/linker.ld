@@ -17,7 +17,6 @@ SECTIONS
       *(.text)
   } : text
 
-
   .vector_table : {
     . = ALIGN(0x800);
     vtable_start = .;
