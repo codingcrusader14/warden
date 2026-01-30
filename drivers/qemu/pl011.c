@@ -1,7 +1,7 @@
 #include "pl011.h"
 
 static inline uint32 pl011_read(enum pl011_registers offset) {
-    return *(volatile uint32*) (QEMU_PL011_BASE + offset );
+    return *(volatile uint32*) (QEMU_PL011_BASE + offset);
 }
 
 static inline void pl011_write(enum pl011_registers offset, uint32 value) {
@@ -90,7 +90,14 @@ int send_message(const char *data) {
 
 int get_char() {
     while (pl011_read(FLAG_OFFSET) & (FLAG_RXFE)) {}
-    return pl011_read(DATA_OFFSET) & 0xFF;
+    int c = pl011_read(DATA_OFFSET);
+    if (c == '\r') {
+      put_char('\r');
+      put_char('\n');
+    } else {
+      put_char(c);
+    }
+    return c;
 }
 
 void put_char(char c) {

@@ -3,8 +3,8 @@ AS = aarch64-elf-as
 LD = aarch64-elf-ld
 QEMU = qemu-system-aarch64
 
-KERNEL_SRC = src/kernel
-DRIVERS_SRC = src/drivers
+KERNEL_SRC = kernel
+DRIVERS_SRC = drivers
 BUILD_DIR := build
 
 KERNEL_C := $(wildcard $(KERNEL_SRC)/*.c)
