@@ -6,6 +6,7 @@ QEMU = qemu-system-aarch64
 KERNEL_SRC = kernel
 DRIVERS_SRC = drivers
 BUILD_DIR := build
+SYSROOT := sysroot
 
 KERNEL_C := $(wildcard $(KERNEL_SRC)/*.c)
 KERNEL_S := $(wildcard $(KERNEL_SRC)/*.S)
@@ -23,14 +24,22 @@ CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggd
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 QEMUFLAGS := -M virt -cpu cortex-a57 -nographic
+
 all: kernel.elf
+
 
 $(BUILD_DIR) $(BUILD_DIR)/kernel $(BUILD_DIR)/drivers:
 	mkdir -p $@
 
-kernel.elf: $(ALL_OBJ) | $(BUILD_DIR)
-	$(LD) $(LDFLAGS) -o $@ $^
-	@echo "=== Build complete: kernel.elf ==="
+$(SYSROOT)/boot $(SYSROOT)/usr/include $(SYSROOT)/usr/lib:
+	mkdir -p $@
+
+kernel.elf: $(ALL_OBJ) | $(BUILD_DIR) $(SYSROOT)/boot
+	$(LD) $(LDFLAGS) -o $(SYSROOT)/boot/kernel.elf $^
+	@echo "=== Build complete: $(SYSROOT)/boot/kernel.elf ==="
+
+install: kernel.elf
+	@echo "=== Kernel installed to $(SYSROOT)/boot/ ==="
 
 $(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.c | $(BUILD_DIR)/kernel
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -48,11 +57,14 @@ $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S
 
 -include $(ALL_OBJ:.o=.d)
 
+install-headers: | $(SYSROOT)/usr/include
+	@echo "=== No headers to install yet ==="
+
 qemu: kernel.elf
-	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf 
+	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf 
 
 qemu-gdb: kernel.elf
-	$(QEMU) $(QEMUFLAGS) -kernel kernel.elf -S -s
+	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf -S -s
 
 clean:
 	rm -rf $(BUILD_DIR) kernel.elf

@@ -24,7 +24,7 @@ SECTIONS
     . = . + 0x800; /* 2KB vector table */
   }
 
-    .rodata : {
+  .rodata : {
     *(.rodata)
   } : rodata
     

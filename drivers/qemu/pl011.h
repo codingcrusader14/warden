@@ -33,7 +33,9 @@ enum pl011_registers {
 
 /* Register specific bits */
 enum flag {
+  FLAG_TXFE = (1 << 7), // Transmit FIFO empty
   FLAG_RXFF = (1 << 6), // Recieve FIFO full
+  FLAG_TXFF = (1 << 5), // Transmit FIFO full
   FLAG_RXFE = (1 << 4), // Recieve FIFO empty
   FLAG_BUSY = (1 << 3),
 };

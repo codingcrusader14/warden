@@ -15,8 +15,16 @@ static void calculate_divsors(const pl011 *dev, uint32 *integer, uint32 *fractio
     *integer = (divisor >> 6) & 0xFFFF; // lower 16 for UARTIBRD
 }
 
-static void check_transmission() {
+static void uart_flush() {
     while ((pl011_read(FLAG_OFFSET)) & (FLAG_BUSY)) {}
+}
+
+static void wait_tx_ready() {
+  while (pl011_read(FLAG_OFFSET) & FLAG_TXFF) {}
+}
+
+static void wait_rx_ready() {
+  while (pl011_read(FLAG_OFFSET) & FLAG_RXFE) {}
 }
 
 static int pl011_reset_qemu(const pl011 *dev) {
@@ -24,11 +32,11 @@ static int pl011_reset_qemu(const pl011 *dev) {
     uint32 line_control_register = pl011_read(LINE_CONTROL_OFFSET);
     uint32 ibrd, fbrd;
 
+    /* Wait for end of transmission */
+    uart_flush();
+
     /* Disable UART */
     pl011_write(CONTROL_OFFSET, control_register & ~(CR_UARTEN | CR_TXE | CR_RXE));
-
-    /* Wait for end of transmission */
-    check_transmission();
 
     /* Flush transmit FIFO */
     pl011_write(LINE_CONTROL_OFFSET, (line_control_register & ~LCR_FEN));   
@@ -80,28 +88,21 @@ int pl011_setup_qemu(pl011 *dev) {
 }
 
 int send_message(const char *data) {
-    check_transmission();
     while (*data) {
-        pl011_write(DATA_OFFSET, *data++);
-        check_transmission();
+      wait_tx_ready();
+      pl011_write(DATA_OFFSET, *data++);
     }
     return 0;
 }
 
 int get_char() {
-    while (pl011_read(FLAG_OFFSET) & (FLAG_RXFE)) {}
+    wait_rx_ready();
     int c = pl011_read(DATA_OFFSET);
-    if (c == '\r') {
-      put_char('\r');
-      put_char('\n');
-    } else {
-      put_char(c);
-    }
     return c;
 }
 
 void put_char(char c) {
-    check_transmission();
+    wait_tx_ready();
     pl011_write(DATA_OFFSET, c);
 }
 
