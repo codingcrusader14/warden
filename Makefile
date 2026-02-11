@@ -8,10 +8,10 @@ DRIVERS_SRC = drivers
 BUILD_DIR := build
 SYSROOT := sysroot
 
-KERNEL_C := $(wildcard $(KERNEL_SRC)/*.c)
-KERNEL_S := $(wildcard $(KERNEL_SRC)/*.S)
+KERNEL_C := $(shell find $(KERNEL_SRC) -type f -name '*.c')
+KERNEL_S := $(shell find $(KERNEL_SRC) -type f -name '*.S')
 DRIVERS_C := $(shell find $(DRIVERS_SRC) -type f -name '*.c')
-DRIVERS_S := $(shell find $(DRIVERS_SRC) -type f -name '*.s')
+DRIVERS_S := $(shell find $(DRIVERS_SRC) -type f -name '*.S')
 
 KERNEL_OBJ := $(patsubst $(KERNEL_SRC)/%.c, $(BUILD_DIR)/kernel/%.o, $(KERNEL_C))
 KERNEL_OBJ += $(patsubst $(KERNEL_SRC)/%.S, $(BUILD_DIR)/kernel/%.o, $(KERNEL_S))
@@ -20,7 +20,7 @@ DRIVERS_OBJ += $(patsubst $(DRIVERS_SRC)/%.S, $(BUILD_DIR)/drivers/%.o, $(DRIVER
 
 ALL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ)
 
-CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -I src/kernel -I src/drivers -MMD -MP
+CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -I kernel -I drivers -I kernel/libk/includes -mgeneral-regs-only  -MMD -MP
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 QEMUFLAGS := -M virt -cpu cortex-a57 -nographic
@@ -41,14 +41,16 @@ kernel.elf: $(ALL_OBJ) | $(BUILD_DIR) $(SYSROOT)/boot
 install: kernel.elf
 	@echo "=== Kernel installed to $(SYSROOT)/boot/ ==="
 
-$(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.c | $(BUILD_DIR)/kernel
-	$(CC) $(CFLAGS) -c $< -o $@
-
 $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.S | $(BUILD_DIR)/kernel
+$(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.S
+	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) -g -c $< -o $@
 
 $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S

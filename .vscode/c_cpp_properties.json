@@ -1,0 +1,15 @@
+{
+  "configurations": [
+    {
+      "name": "Warden",
+      "includePath": [
+        "${workspaceFolder}/**",
+        "/opt/homebrew/Cellar/aarch64-elf-gcc/15.2.0/lib/gcc/aarch64-elf/15.2.0/include"
+      ],
+      "compilerPath": "/opt/homebrew/bin/aarch64-elf-gcc",
+      "cStandard": "gnu23",
+      "intelliSenseMode": "gcc-arm64"
+    }
+  ],
+  "version": 4
+}
