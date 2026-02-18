@@ -1,3 +1,6 @@
+#ifndef TRAP_H
+#define TRAP_H
+
 #include "types.h"
 
 typedef struct trapframe {
@@ -35,4 +38,10 @@ typedef struct trapframe {
  /* 248 */  uint64 elr_el1;     /* holds address to return to when taking exception */
  /* 256 */  uint64 spsr_el1;    /* holds PSTATE */
  /* 264 */  uint64 sp_el0;      /* holds EL0 sp */
+ /* 272 */  uint64 esr_el1;     /* expection syndrome */
+ /* 280 */  uint64 far_el1;     /* faulting address */
 } trapframe;
+
+void kerneltrap(struct trapframe* tf);
+
+#endif

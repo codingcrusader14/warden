@@ -5,9 +5,9 @@
 kernelvec:
         # making room to save register state.
         
-        sub sp, sp, 272
+        sub sp, sp, 288
 
-        # save caller saved registers.
+        # save caller registers.
         stp x0, x1, [sp, #0]
         stp x2, x3, [sp, #16]
         stp x4, x5, [sp, #32]
@@ -26,5 +26,12 @@ kernelvec:
         mrs x0, ELR_EL1
         mrs x1, SPSR_EL1
         mrs x2, SP_EL0
+        mrs x3, ESR_EL1
+        mrs x4, FAR_EL1
         stp x30, x0, [sp, #240]
         stp x1, x2, [sp, #256]
+        stp x3, x4, [sp, #272]
+
+        mov x0, sp 
+        bl kerneltrap
+        1: b 1b

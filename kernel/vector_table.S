@@ -10,7 +10,7 @@ _vector_table_entry: // start of vector table
 
 .balign 0x80
 sync_current_el_sp0:
-        b .
+        b kernelvec
         
 .balign 0x80
 irq_current_el_sp0: 
@@ -26,7 +26,7 @@ serror_current_el_sp0:
         
 .balign 0x80
 sync_current_el_spx:
-        b .
+        b kernelvec
         
 .balign 0x80
 irq_current_el_spx:
