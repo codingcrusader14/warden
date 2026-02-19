@@ -1,5 +1,7 @@
 #include "pl011.h"
 
+static pl011 uart;
+
 static inline uint32 pl011_read(enum pl011_registers offset) {
     return *(volatile uint32*) (QEMU_PL011_BASE + offset);
 }
@@ -79,12 +81,16 @@ static int pl011_reset_qemu(const pl011 *dev) {
     return 0;
 }
 
-int pl011_setup_qemu(pl011 *dev) {
+static int pl011_setup_qemu(pl011 *dev) {
     dev->clock = QEMU_CLOCK;
     dev->baud_rate = QEMU_BAUD_RATE;
     dev->data_bits = QEMU_DATA_BITS;
     dev->stop_bits = QEMU_STOP_BITS;
     return pl011_reset_qemu(dev);
+}
+
+void uart_init() {
+  pl011_setup_qemu(&uart);
 }
 
 int send_message(const char *data) {

@@ -27,18 +27,23 @@ SECTIONS
   .rodata : {
     *(.rodata)
   } : rodata
-    
+  
   .data : {
     *(.data)
   } : data
 
   .bss : {
+    _bss_start = .;
     *(.bss)
+    _bss_end = .;
   }
 
   . = ALIGN(16);
   . = . + 0x4000; /* 16KB stack */
   stack_top = .;
+
+  . = ALIGN(4096);
+  _kernel_end = .;
 }
 
 

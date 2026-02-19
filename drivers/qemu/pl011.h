@@ -58,7 +58,7 @@ typedef struct pl011 {
   uint32 stop_bits;
 } pl011;
 
-int pl011_setup_qemu(pl011 *dev);
+void uart_init();
 int send_message(const char *data);
 int get_char();
 void put_char(char c);

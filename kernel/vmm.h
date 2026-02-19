@@ -5,9 +5,12 @@
 #define PAGE_SHIFT 12 // 2^12 = Page Size
 #define VA_BITS 48 // Virtual Address
 
+#define DEVICE_MEMORY 0x9000000UL
+#define KERNEL_MEMORY 0x40000000UL
+
 /* Block Descriptor Bits */
 
-#define NOT_GlOBAL                (1UL << 11) // TLB maintence across ASID
+#define GLOBAL                    (0UL << 11) // TLB maintence across ASID
 #define ACCESS                    (1UL << 10) // Recent memory access
 
 #define SH_SHIFT                  (8) 
@@ -16,7 +19,7 @@
 #define SH_OUTER_SHAREABLE        (0x2UL << SH_SHIFT)
 #define SH_INNER_SHAREABLE        (0x3UL << SH_SHIFT)  
 
-#define AP_READ_ONLY              (1UL << 7) // Privileged read
+#define AP_READ_WRITE             (0UL << 7) // Privileged read and write
 #define AP_ALLOW_E0               (1UL << 6) // Allow user mode
 #define NS                        (1UL << 5) // Secure vs Non Secure access
 
@@ -86,5 +89,9 @@
                                 | TCR_SH0_IS     \
                                 | TCR_SH1_IS     \
                                 )
+
+#ifndef __ASSEMBLER__
+  void vmm_init();
+#endif
 
 #endif 
