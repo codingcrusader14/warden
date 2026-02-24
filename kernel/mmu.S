@@ -1,15 +1,16 @@
 
-#include "vmm.h"
+#include "mmu_defs.h"
 
 .globl configure_mmu
 .balign 8
 
 configure_mmu: 
-          msr TTBR0_EL1, x0 // store translation table base register
-          ldr x1, =MAIR_VALUE
-          msr mair_el1, x1 // store MAIR_El1
-          ldr x2, =TCR_VALUE
-          msr tcr_el1, x2 // store TCR_EL1
+          msr TTBR0_EL1, x0 // store translation table base register user space
+          msr TTBR1_EL1, x1 // store translation table base register kernel_space
+          ldr x2, =MAIR_VALUE
+          msr mair_el1, x2 // store MAIR_El1
+          ldr x3, =TCR_VALUE
+          msr tcr_el1, x3 // store TCR_EL1
 
           isb
 
@@ -18,6 +19,7 @@ configure_mmu:
           msr sctlr_el1, x1
 
           isb
+
           ret
 
 

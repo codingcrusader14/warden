@@ -9,6 +9,11 @@
 
 void kernel_main(void) {
    uart_init();
-   vmm_init();
    pmm_init(QEMU_DRAM_START, QEMU_DRAM_END);
+   vmm_init();
+   debug_va(kernel_L0, 0x09000000);
+   kprintf("\n");
+   debug_va(kernel_L0, 0x40080000);
+   kprintf("\n");
+   debug_va(kernel_L0, (va_t)QEMU_DRAM_START);
 }

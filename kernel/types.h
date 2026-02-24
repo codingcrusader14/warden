@@ -11,6 +11,7 @@ typedef uint64_t uint64;
 
 typedef uint64_t pte_t;
 typedef uint64_t pa_t;
+typedef uint64_t va_t;
 
 typedef int32_t int32;
 typedef int64_t int64;

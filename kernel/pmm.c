@@ -1,9 +1,13 @@
 #include "pmm.h"
-#include "vmm.h"
+#include "mmu_defs.h"
 #include "libk/includes/string.h"
+#include "libk/includes/stdio.h"
 
 static pa_t* head;
 
+void print_head() {
+  kprintf("Head address is %p\n", head);
+}
 void pmm_init(pa_t* start, pa_t* end) {
   head = start;
   while (start != end) {
@@ -25,6 +29,7 @@ pa_t* pmm_alloc() {
   pa_t next_page = *head;
   pa_t* current_page = head;
   head = (pa_t*)next_page;
+  memset(current_page, 0, PAGE_SIZE);
   return current_page;
 }
 
@@ -32,7 +37,6 @@ void pmm_free(pa_t* address) {
   if (address == NULL) {
     return;
   }
-  memset(address, 0, PAGE_SIZE);
   *address = (pa_t)head;
   head = address;
 }
