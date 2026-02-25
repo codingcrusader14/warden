@@ -15,5 +15,9 @@ void kernel_main(void) {
    kprintf("\n");
    debug_va(kernel_L0, 0x40080000);
    kprintf("\n");
-   debug_va(kernel_L0, (va_t)QEMU_DRAM_START);
+   debug_va(kernel_L0, (va_t)QEMU_DRAM_START + 0x10000);
+   unmap_page(kernel_L0, (va_t) QEMU_DRAM_START + 0x10000);
+   kprintf("\n");
+   debug_va(kernel_L0, (va_t)QEMU_DRAM_START + 0x10000);
+   debug_va(kernel_L0, 0x0);
 }

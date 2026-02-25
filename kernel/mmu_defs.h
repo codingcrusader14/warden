@@ -4,6 +4,7 @@
 #define PAGE_SIZE 4096 // 4KB 
 #define PAGE_SHIFT 12 // 2^12 = Page Size
 #define VA_BITS 48 // Virtual Address
+#define TABLE_ENTRIES (PAGE_SIZE / 8)
 
 #define TABLE_SHIFT(N) (39 - ((N) * 9)) // L0, L1, L2, L3
 #define PAGE_BIT_ENTRIES 0x1FFUL // 2^9 PAGE_SIZE / sizeof(PTE)

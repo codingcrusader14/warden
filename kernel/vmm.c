@@ -1,12 +1,26 @@
 #include "vmm.h"
 #include "pmm.h"
 #include "libk/includes/stdio.h"
+#include "libk/includes/string.h"
 #include <stdlib.h>
 #include <stdalign.h>
 #include "mmu_defs.h"
 
 extern void configure_mmu(pte_t* user_tables, pte_t* kernel_tables);
+extern void tlb_invalidate(va_t virtual_address);
+
 pte_t* kernel_L0;
+
+pte_t* alloc_page_table() {
+  return (pte_t*) pmm_alloc();
+}
+
+static int is_table_free(pte_t* table) {
+  for (size_t i = 0; i < TABLE_ENTRIES; ++i) {
+    if (table[i]) { return 0; }
+  }
+  return 1;
+}
 
 int vmm_init() {
   kernel_L0 = alloc_page_table(); // kernel base page table
@@ -35,10 +49,6 @@ int vmm_init() {
 
   configure_mmu(kernel_L0,user_L0);
   return 0;
-}
-
-pte_t* alloc_page_table() {
-  return (pte_t*) pmm_alloc();
 }
 
 int map_page(pte_t* base_table, va_t virtual_address, pa_t physical_address, pte_t flags) {
@@ -81,12 +91,56 @@ int map_page(pte_t* base_table, va_t virtual_address, pa_t physical_address, pte
   pte_t* L3_base_table = (pte_t*) (L2_base_table[L2_index] & TABLE_ADDR_MASK);
   va_t L3_index = (virtual_address >> TABLE_SHIFT(3)) & PAGE_BIT_ENTRIES;
 
-  if (!L3_base_table[L3_index]) {
-    L3_base_table[L3_index] = ((pte_t) physical_address | flags);
-  } else {
-    return -2;
+  if (L3_base_table[L3_index] & VALID) {
+    return -2; // entry is already mapped
+  }
+  L3_base_table[L3_index] = ((pte_t) physical_address | flags);
+  return 0;
+}
+
+int unmap_page(pte_t* base_table, va_t virtual_address) {
+  // clears the pte based off of the virtual address mapping, if the mapping 
+  // does not exist it returns -1. 
+  va_t L0_index = (virtual_address >> TABLE_SHIFT(0)) & PAGE_BIT_ENTRIES;
+  if (!(base_table[L0_index] & VALID)) {
+    return -1;
   }
 
+  pte_t* L1_base_table = (pte_t*)(base_table[L0_index] & TABLE_ADDR_MASK);
+  va_t L1_index = (virtual_address >> TABLE_SHIFT(1)) & PAGE_BIT_ENTRIES;
+  if (!(L1_base_table[L1_index] & VALID)) {
+    return -1;
+  }
+
+  pte_t* L2_base_table = (pte_t*)(L1_base_table[L1_index] & TABLE_ADDR_MASK);
+  va_t L2_index = (virtual_address >> TABLE_SHIFT(2)) & PAGE_BIT_ENTRIES;
+  if (!(L2_base_table[L2_index] & VALID)) {
+    return -1;
+  }
+
+  pte_t* L3_base_table = (pte_t*) (L2_base_table[L2_index] & TABLE_ADDR_MASK);
+  va_t L3_index = (virtual_address >> TABLE_SHIFT(3)) & PAGE_BIT_ENTRIES;
+  if (!(L3_base_table[L3_index] & VALID)) {
+    return -1;
+  }
+
+  L3_base_table[L3_index] = 0; // clear pte
+  tlb_invalidate(virtual_address >> PAGE_SHIFT); // invalidate tlb entry accross all cores
+  // if the page table is empty corresponding to its level, then the underlying physical page is freed
+  if (is_table_free(L3_base_table)) {
+    L2_base_table[L2_index] = 0;
+    pmm_free((pa_t*)L3_base_table);
+
+    if (is_table_free(L2_base_table)) {
+      L1_base_table[L1_index] = 0;
+      pmm_free((pa_t*)L2_base_table);
+  
+      if (is_table_free(L1_base_table)) {
+        base_table[L0_index] = 0;
+        pmm_free((pa_t*)L1_base_table);
+      }
+    }
+  }
   return 0;
 }
 

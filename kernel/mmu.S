@@ -2,6 +2,7 @@
 #include "mmu_defs.h"
 
 .globl configure_mmu
+.globl tlb_invalidate
 .balign 8
 
 configure_mmu: 
@@ -11,16 +12,21 @@ configure_mmu:
           msr mair_el1, x2 // store MAIR_El1
           ldr x3, =TCR_VALUE
           msr tcr_el1, x3 // store TCR_EL1
-
           isb
-
           mrs x1, sctlr_el1
           orr x1, x1, 1 // turn on MMU
           msr sctlr_el1, x1
-
           isb
 
           ret
+
+tlb_invalidate:
+        dsb ishst
+        tlbi vale1is, x0
+        dsb ish
+        isb
+
+        ret
 
 
 
