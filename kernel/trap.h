@@ -35,13 +35,16 @@ typedef struct trapframe {
  /* 224 */  uint64 x28;
  /* 232 */  uint64 x29;
  /* 240 */  uint64 x30;
- /* 248 */  uint64 elr_el1;     /* holds address to return to when taking exception */
- /* 256 */  uint64 spsr_el1;    /* holds PSTATE */
+ /* 248 */  uint64 elr_el1;     /* holds address of the instruction which caused the exception */
+ /* 256 */  uint64 spsr_el1;    /* holds the saved processor state when an exception is taken to EL1 */
  /* 264 */  uint64 sp_el0;      /* holds EL0 sp */
- /* 272 */  uint64 esr_el1;     /* expection syndrome */
- /* 280 */  uint64 far_el1;     /* faulting address */
+ /* 272 */  uint64 esr_el1;     /* includes info about the reasons for exception */
+ /* 280 */  uint64 far_el1;     /* holds virtual faulting address */
 } trapframe;
 
-void kerneltrap(struct trapframe* tf);
+void kernelvec_sync(struct trapframe* tf);
+void kernelvec_irq(struct trapframe* tf);
+void kernelvec_fiq(struct trapframe* tf);
+void kernelvec_system(struct trapframe* tf);
 
 #endif

@@ -5,6 +5,9 @@
  * Hardware : Arm PrimeCell UART PL011
  */
  
+#ifndef QEMU_PL011_H
+#define QEMU_PL011_H
+
 #include "../../kernel/types.h"
 
 /* Qemu virt mode */
@@ -63,7 +66,7 @@ int send_message(const char *data);
 int get_char();
 void put_char(char c);
 
-
+#endif
 
 
 
