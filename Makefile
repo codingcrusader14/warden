@@ -20,7 +20,7 @@ DRIVERS_OBJ += $(patsubst $(DRIVERS_SRC)/%.S, $(BUILD_DIR)/drivers/%.o, $(DRIVER
 
 ALL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ)
 
-CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -I kernel -I drivers -I kernel/libk/includes -mgeneral-regs-only  -MMD -MP
+CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I kernel/libk/includes -mgeneral-regs-only  -MMD -MP
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 QEMUFLAGS := -M virt -m 512M -cpu cortex-a57 -nographic

@@ -8,6 +8,7 @@
 
 #define TIMER_PPI_ID 30
 #define PRIORITY_FILTER 0xFF
+#define ENABLE_TIMER_BIT (1 << TIMER_PPI_ID)
 
 enum distributor_regs {
   DISTRIBUTOR_CONTROL_REGISTER    = 0x000, 
@@ -22,14 +23,11 @@ enum cpu_regs {
   END_OF_INTERRUPT_REGISTER             = 0x010, // WO [9:0] End of Interrupt ID, [12:10] CPU ID
 };
 
-enum control {
+enum control_regs {
   ENABLE_FORWARDING = (1 << 0), // enable interrupt forwarding
   ENABLE_SIGNALING  = (1 << 0), // enable signaling of interrupts
 };
 
-enum timer {
-  ENABLE_TIMER = (1 << TIMER_PPI_ID),
-};
 
 void gic_init();
 uint32 read_interrupt_ack();

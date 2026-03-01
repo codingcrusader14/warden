@@ -12,6 +12,8 @@
 
 #define DEVICE_MEMORY 0x9000000UL
 #define KERNEL_MEMORY 0x40000000UL
+#define GICD 0x8000000UL
+#define GICC 0x8010000UL
 
 /* Block Descriptor Bits */
 

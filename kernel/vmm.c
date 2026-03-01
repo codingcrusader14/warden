@@ -36,9 +36,15 @@ int vmm_init() {
     }
   }
   
-  pte_t device_mem =  (GLOBAL | ACCESS | SH_NON_SHAREABLE | AP_READ_WRITE | ATTRINDX(0) | PAGE_DESCRIPTOR | VALID); // maps kernel uart
+  pte_t device_mem = (GLOBAL | ACCESS | SH_NON_SHAREABLE | AP_READ_WRITE | ATTRINDX(0) | PAGE_DESCRIPTOR | VALID); // maps kernel uart
   if (map_page(kernel_L0, DEVICE_MEMORY, DEVICE_MEMORY, device_mem)) {
     return -1;
+  }
+
+  for (pa_t entry = (pa_t) GICD ; entry < (pa_t) GICC + 0x10000 ; entry += 0x1000) { // maps gic controller
+    if (map_page(kernel_L0, entry, entry, device_mem)) {
+      return -1;
+    }
   }
 
   for (pa_t entry = (pa_t) QEMU_DRAM_START ; entry < ((pa_t)QEMU_DRAM_START + 0x2000000); entry += 0x1000) { // allocates 2mb of kernel heap space in ram

@@ -1,6 +1,8 @@
 #include "trap.h" 
 #include "libk/includes/stdio.h"
-
+#include "../drivers/qemu/gic.h"
+#include "../drivers/qemu/timer.h"
+#include "global.h"
 
 void kernelvec_sync(struct trapframe *tf) {
   uint64_t ec = (tf->esr_el1 >> 26) & (0x3F);
@@ -10,10 +12,24 @@ void kernelvec_sync(struct trapframe *tf) {
   kprintf("Return Address (ELR): %p\n", tf->elr_el1);
   while (1) {}
 }
-void kernelvec_irq(struct trapframe *tf) {
-  kprintf("Exception IRQ Recieved!\n");
-  kprintf("Faulting Address (FAR): %p\n", tf->far_el1);
-  while (1) {}
+void kernelvec_irq(struct trapframe* tf) {
+  if (global_tick % 100 == 0) {
+    kprintf("Here in irq , also here is the return address %p\n", tf->elr_el1);
+  }
+  uint32 ack_id = read_interrupt_ack();
+  switch(ack_id) {
+    case 30 : {
+      if (global_tick % 100 == 0) {
+        kprintf("Timer fired, OS regained control.\n");
+      } 
+      timer_rearm();
+      break;
+    }
+    default : 
+      kprintf("This interrupt is not recongnized\n");
+      break;
+  }
+  write_end_of_interrupt(ack_id);
 }
 
 void kernelvec_fiq(struct trapframe *tf) {
