@@ -13,15 +13,10 @@ void kernelvec_sync(struct trapframe *tf) {
   while (1) {}
 }
 void kernelvec_irq(struct trapframe* tf) {
-  if (global_tick % 100 == 0) {
-    kprintf("Here in irq , also here is the return address %p\n", tf->elr_el1);
-  }
+  UNUSED(tf);
   uint32 ack_id = read_interrupt_ack();
   switch(ack_id) {
     case 30 : {
-      if (global_tick % 100 == 0) {
-        kprintf("Timer fired, OS regained control.\n");
-      } 
       timer_rearm();
       break;
     }

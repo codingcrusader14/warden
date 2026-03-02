@@ -61,7 +61,16 @@ void *kmalloc(size_t size) {
     prev = current;
     current = current->next;
   }
-  return NULL;
+  pa_t* new_page = pmm_alloc(); // if there are no pages suitable try allocating for a new page, still havent fixed issue with size >= 4080
+  if (!new_page) { // page allocation failed, or no physical pages left
+      return NULL;
+    }
+  block_header_t *new_header = (block_header_t *)new_page;
+  new_header->size = (PAGE_SIZE - sizeof(block_header_t));
+  new_header->free = true;
+  new_header->next = NULL;
+  head = new_header;
+  return kmalloc(size);
 }
 
 void kfree(void *ptr) {
