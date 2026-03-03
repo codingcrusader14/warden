@@ -3,6 +3,9 @@
 #include "../drivers/qemu/gic.h"
 #include "../drivers/qemu/timer.h"
 #include "global.h"
+#include "schedule.h"
+#include "process.h"
+#include "stdbool.h"
 
 void kernelvec_sync(struct trapframe *tf) {
   uint64_t ec = (tf->esr_el1 >> 26) & (0x3F);
@@ -18,6 +21,7 @@ void kernelvec_irq(struct trapframe* tf) {
   switch(ack_id) {
     case 30 : {
       timer_rearm();
+      schedule();
       break;
     }
     default : 

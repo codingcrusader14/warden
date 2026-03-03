@@ -12,7 +12,7 @@ enum task_state {
   DEAD,
 };
 
-struct task_context {
+struct context {
   uint64 x19;
   uint64 x20;
   uint64 x21;
@@ -29,13 +29,14 @@ struct task_context {
 };
 
 struct task {
+  struct context ctx;
   uint64 pid; 
   enum task_state state;
-  struct task_context context_registers;
   struct task* next_task;
   void* stack_base; // base address of stack
 }; 
 
+void task_trampoline();
 struct task* task_create(void (*entry)(void));
-
+void task_free(struct task* t);
 #endif

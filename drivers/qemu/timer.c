@@ -27,12 +27,20 @@ static inline void write_daif_clr() {
    asm volatile("msr DAIFCLr, #2");
 }
 
+void disable_interrupts() {
+   asm volatile("msr DAIFSet, #0xF");
+}
+
+void enable_interrupts() {
+   asm volatile("msr DAIFCLr, #0xF");
+}
+
 void timer_init() {
   uint64 freq = read_cntfrq(); // read frequency
   ticks_per_interval = (freq / 100); // 10ms
   write_cntp_tval(ticks_per_interval); // arm countdown
   write_cntp_ctl(ENABLE_TIMER); // enable timer
-  write_daif_clr(); // clear interrupt mask
+
 }
 
 void timer_rearm() {

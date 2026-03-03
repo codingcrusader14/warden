@@ -3,7 +3,10 @@
 
 extern struct task* current_task;
 
-void schedule();
+void kexit();
+void yield();
 void scheduler_add(struct task *t);
+int schedule();
+int scheduler_start();
 
 #endif

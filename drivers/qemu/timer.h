@@ -6,6 +6,8 @@
 #define MASK_INTTERUPT (1 << 1)
 #define UNMASK_INTERRUPT 0x2
 
+void disable_interrupts();
+void enable_interrupts();
 void timer_init();
 void timer_rearm();
 

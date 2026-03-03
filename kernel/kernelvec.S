@@ -35,8 +35,8 @@ save_regs:
 restore_regs:
         ldp x2, x1, [sp, #256]
         ldr x0,     [sp, #248]
-        msr SP_EL0,   x2 
-        msr SPSR_EL1, x1 
+        msr SPSR_El1, x2 
+        msr SP_EL0,   x1 
         msr ELR_EL1,  x0
         ldp x28, x29, [sp, #224]
         ldp x26, x27, [sp, #208]
@@ -72,7 +72,7 @@ irq_exception:
         str x30, [sp, #240]
         bl save_regs
         mov x0, sp
-        bl kernelvec_irq
+        bl kernelvec_irq 
         bl restore_regs 
         ldr x30, [sp, #240]
         add sp, sp, 288

@@ -10,67 +10,67 @@ _vector_table_entry: // start of vector table
 
 .balign 0x80
 sync_current_el_sp0:
-        bl sync_exception
+        b sync_exception
         
 .balign 0x80
 irq_current_el_sp0: 
-        bl irq_exception
+        b irq_exception
         
 .balign 0x80
 fiq_current_el_sp0:
-        bl fiq_exception
+        b fiq_exception
         
 .balign 0x80
 serror_current_el_sp0:
-        bl system_exception
+        b system_exception
         
 .balign 0x80
 sync_current_el_spx:
-        bl sync_exception
+        b sync_exception
 
 .balign 0x80
 irq_current_el_spx:
-        bl irq_exception
+        b irq_exception
         
 .balign 0x80
 fiq_current_el_spx:
-        bl fiq_exception
+        b fiq_exception
         
 .balign 0x80
 serror_current_el_spx:
-        bl system_exception
+        b system_exception
         
 .balign 0x80
 sync_lower_el_aarch64:
-        bl sync_exception
+        b sync_exception
         
 .balign 0x80
 irq_lower_el_aarch64:
-        bl irq_exception
+        b irq_exception
         
 .balign 0x80
 fiq_lower_el_aarch64:
-        bl fiq_exception
+        b fiq_exception
         
 .balign 0x80
 serror_lower_el_aarch64:
-        bl system_exception
+        b system_exception
         
 .balign 0x80
 sync_lower_el_aarch32:
-        bl sync_exception
+        b sync_exception
         
 .balign 0x80
 irq_lower_el_aarch32:
-        bl irq_exception
+        b irq_exception
         
 .balign 0x80
 fiq_lower_el_aarch32:
-        bl fiq_exception
+        b fiq_exception
         
 .balign 0x80
 serror_current_el_aarch32:
-        bl system_exception
+        b system_exception
 
              
  

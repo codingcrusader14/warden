@@ -1,17 +1,5 @@
 .globl context_switch
-.globl sched_start
 .balign 8
-
-sched_start:
-    ldp x19, x20, [x0, #0]
-    ldp x21, x22, [x0, #16]
-    ldp x23, x24, [x0, #32]
-    ldp x25, x26, [x0, #48]
-    ldp x27, x28, [x0, #64]
-    ldp x29, x30, [x0, #80]
-    ldr x9, [x0, #96]
-    mov sp, x9
-    ret
 
 context_switch:
         stp x19, x20, [x0, #0]
