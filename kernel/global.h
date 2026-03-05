@@ -2,6 +2,7 @@
 #define DEFS_H
 
 #include "types.h"
+#include <stdbool.h>
 
 #define STACK_SIZE 4080
 #define UNUSED(x) (void)(x)

@@ -1,7 +1,22 @@
+/*
+ * timer.c - ARMv8-A (QEMU) Generic Timer Driver
+ * 
+ * Operates the ARM Generic Timer (CNTP) on QEMU virt mode (Cortex-A57).
+ * Configures EL1 physical timer (CNTP_CTL_EL0, CNTP_TVAL_EL0) to generate 
+ * periodic IRQ 30 (Non-Secure PPI) for preemptive scheduling
+ *
+ * Resources:
+ *  Learn the architecture - Generic Timer - Version 1.0
+ *  QEMU virt, GICv2 PPI mapping
+ */
+
 #include "timer.h"
 #include "../../kernel/global.h"
+#include "../../kernel/clock.h"
 
+uint64 clock_freq;
 static uint64 ticks_per_interval;
+
 
 static inline uint64 read_cntfrq() {
   uint64 val; 
@@ -36,11 +51,12 @@ void enable_interrupts() {
 }
 
 void timer_init() {
-  uint64 freq = read_cntfrq(); // read frequency
-  ticks_per_interval = (freq / 100); // 10ms
+  clock_freq = read_cntfrq(); // read frequency
+  ticks_per_interval = (clock_freq / 100); // 10ms
   write_cntp_tval(ticks_per_interval); // arm countdown
   write_cntp_ctl(ENABLE_TIMER); // enable timer
-
+  write_daif_clr();
+  clock_init();
 }
 
 void timer_rearm() {

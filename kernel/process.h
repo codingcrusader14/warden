@@ -5,6 +5,9 @@
 
 extern uint64 next_pid;
 
+#define REAPER_TASK 5
+#define NORMAL_TASK 100
+
 enum task_state {
   READY,
   RUNNING,
@@ -28,15 +31,21 @@ struct context {
   uint64 sp; // stack pointer
 };
 
-struct task {
+typedef struct {
   struct context ctx;
   uint64 pid; 
   enum task_state state;
-  struct task* next_task;
+  uint64 tickets;
+  uint64 stride;
+  uint64 remain;
+  uint64 pass;
+  uint64 scheduler_tick;
   void* stack_base; // base address of stack
-}; 
+} task_t; 
 
+void kexit();
+void yield();
 void task_trampoline();
-struct task* task_create(void (*entry)(void));
-void task_free(struct task* t);
+task_t* task_create(void (*entry)(void), uint64 ticket_level);
+void task_free(task_t* t);
 #endif

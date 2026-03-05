@@ -1,9 +1,9 @@
-#include "vmm.h"
-#include "pmm.h"
-#include "libk/includes/stdio.h"
-#include "libk/includes/string.h"
 #include <stdlib.h>
 #include <stdalign.h>
+#include "libk/includes/stdio.h"
+#include "libk/includes/string.h"
+#include "vmm.h"
+#include "pmm.h"
 #include "mmu_defs.h"
 
 extern void configure_mmu(pte_t* user_tables, pte_t* kernel_tables);
