@@ -7,6 +7,7 @@
 #include "global.h"
 
 uint64 next_pid = 1;
+cpu cpus[NCPU];
 
 void kexit() {
   current_task->state = DEAD;
@@ -46,7 +47,7 @@ task_t* task_create(void (*entry)(void), uint64 ticket_level) {
 
   uint64 sp_top = ((uint64) new_task->stack_base + STACK_SIZE) & ~0xF;
 
-  memset(&new_task->ctx, 0, sizeof(struct context));
+  memset(&new_task->ctx, 0, sizeof(context));
   new_task->ctx.x30 = (uint64)task_trampoline;
   new_task->ctx.x19 = (uint64)entry; 
   new_task->ctx.sp = sp_top;

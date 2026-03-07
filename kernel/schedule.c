@@ -7,7 +7,7 @@
 #include "clock.h"
 
 
-extern void context_switch(struct context* old, struct context* new);
+extern void context_switch(context* old, context* new);
 static scheduler_t scheduler; // Fair Share Stride Scheduler - Only contains ready processes
 zombie_t cleanup; // Dead tasks for cleanup 
 static uint64 global_tickets, global_stride, global_pass;

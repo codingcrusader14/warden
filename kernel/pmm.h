@@ -2,9 +2,10 @@
 #define PMM_H
 
 #include "types.h"
+#include "mmu_defs.h"
 
-extern char _kernel_end;
-#define QEMU_DRAM_START (pa_t*)&_kernel_end
+extern char _qemu_kernel_end;
+#define QEMU_DRAM_START (pa_t*) KVA_TO_PA(&_qemu_kernel_end)
 #define QEMU_DRAM_END (pa_t*)0x60000000UL
 
 void print_head();

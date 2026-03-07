@@ -2,6 +2,7 @@
 #define PROCESS_H
 
 #include "types.h"
+#include "global.h"
 
 extern uint64 next_pid;
 
@@ -15,7 +16,7 @@ enum task_state {
   DEAD,
 };
 
-struct context {
+typedef struct {
   uint64 x19;
   uint64 x20;
   uint64 x21;
@@ -29,10 +30,10 @@ struct context {
   uint64 x29;
   uint64 x30; // return address
   uint64 sp; // stack pointer
-};
+} context;
 
 typedef struct {
-  struct context ctx;
+  context ctx;
   uint64 pid; 
   enum task_state state;
   uint64 tickets;
@@ -42,6 +43,16 @@ typedef struct {
   uint64 scheduler_tick;
   void* stack_base; // base address of stack
 } task_t; 
+
+typedef struct {
+  task_t* current_task; 
+  context ctx; 
+  uint32 exception_state; // what was the debug exception, serror, irq, or fiq before acquiring lock
+  uint32 nested_locks; // 1 on unlock enables intterupts, anything >= 1 means nested lock sceario and we dont touch exception state on > 1 locks
+  uint32 id;
+} cpu; 
+
+extern cpu cpus[NCPU];
 
 void kexit();
 void yield();

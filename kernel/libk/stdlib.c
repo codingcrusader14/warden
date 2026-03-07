@@ -11,7 +11,7 @@ void *kmalloc(size_t size) {
     if (!page) { // page allocation failed, or no physical pages left
       return NULL;
     }
-    block_header_t *header = (block_header_t *)page;
+    block_header_t *header = (block_header_t *)PA_TO_KVA(page);
     header->size = (PAGE_SIZE - sizeof(block_header_t));
     header->free = true;
     header->next = NULL;
@@ -65,7 +65,7 @@ void *kmalloc(size_t size) {
   if (!new_page) { // page allocation failed, or no physical pages left
       return NULL;
     }
-  block_header_t *new_header = (block_header_t *)new_page;
+  block_header_t *new_header = (block_header_t *)PA_TO_KVA(new_page);
   new_header->size = (PAGE_SIZE - sizeof(block_header_t));
   new_header->free = true;
   new_header->next = NULL;

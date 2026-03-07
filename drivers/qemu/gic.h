@@ -2,9 +2,10 @@
 #define QEMU_GIC_H
 
 #include "../../kernel/types.h"
+#include "../../kernel/mmu_defs.h"
 
-#define QEMU_DISTRIBUTOR_BASE 0x8000000UL
-#define QEMU_CPU_INTERFACE_BASE 0x8010000UL
+#define QEMU_DISTRIBUTOR_BASE PA_TO_KVA(0x8000000UL)
+#define QEMU_CPU_INTERFACE_BASE PA_TO_KVA(0x8010000UL)
 
 #define TIMER_PPI_ID 30
 #define PRIORITY_FILTER 0xFF

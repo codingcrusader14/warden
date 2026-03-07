@@ -6,10 +6,16 @@
 #include "pmm.h"
 #include "mmu_defs.h"
 
-extern void configure_mmu(pte_t* user_tables, pte_t* kernel_tables);
 extern void tlb_invalidate(va_t virtual_address);
 
 pte_t* kernel_L0;
+
+void set_ttbr1_addr(uint64 addr) {
+  asm volatile("msr ttbr1_el1, %0" :: "r"(addr));
+  asm volatile("tlbi vmalle1is");
+  asm volatile("dsb ish");
+  asm volatile("isb");
+} 
 
 pte_t* alloc_page_table() {
   return (pte_t*) pmm_alloc();
@@ -26,34 +32,33 @@ int vmm_init() {
   kernel_L0 = alloc_page_table(); // kernel base page table
   if (!kernel_L0) { return -1; }
 
-  pte_t* user_L0 = alloc_page_table(); // user base page table
-  if (!user_L0) { return -1; }
-
+  pte_t* kernel_L0_kva = (pte_t*) PA_TO_KVA(kernel_L0);
   pte_t normal_mem = (GLOBAL | ACCESS | SH_INNER_SHAREABLE | AP_READ_WRITE | ATTRINDX(1) | PAGE_DESCRIPTOR | VALID);
   for (pa_t entry = (pa_t) KERNEL_MEMORY ; entry < (pa_t) QEMU_DRAM_START; entry += 0x1000) { // maps kernel image 
-    if (map_page(kernel_L0, entry, entry, normal_mem)) {
+    if (map_page(kernel_L0_kva, PA_TO_KVA(entry), entry, normal_mem)) {
       return -1;
     }
   }
   
-  pte_t device_mem = (GLOBAL | ACCESS | SH_NON_SHAREABLE | AP_READ_WRITE | ATTRINDX(0) | PAGE_DESCRIPTOR | VALID); // maps kernel uart
-  if (map_page(kernel_L0, DEVICE_MEMORY, DEVICE_MEMORY, device_mem)) {
+  pte_t device_mem = (GLOBAL | ACCESS | SH_NON_SHAREABLE | AP_READ_WRITE | ATTRINDX(0) | PAGE_DESCRIPTOR | VALID);  // maps kernel uart
+  if (map_page(kernel_L0_kva, PA_TO_KVA(DEVICE_MEMORY), DEVICE_MEMORY, device_mem)) {
     return -1;
   }
 
-  for (pa_t entry = (pa_t) GICD ; entry < (pa_t) GICC + 0x10000 ; entry += 0x1000) { // maps gic controller
-    if (map_page(kernel_L0, entry, entry, device_mem)) {
+  for (pa_t entry = (pa_t) GICD ; entry < (pa_t) (GICC + 0x10000) ; entry += 0x1000) { // maps gic controller
+    if (map_page(kernel_L0_kva, PA_TO_KVA(entry), entry, device_mem)) {
       return -1;
     }
   }
 
-  for (pa_t entry = (pa_t) QEMU_DRAM_START ; entry < ((pa_t)QEMU_DRAM_START + 0x2000000); entry += 0x1000) { // allocates 2mb of kernel heap space in ram
-    if (map_page(kernel_L0, entry, entry, normal_mem)) {
+  for (pa_t entry = (pa_t) QEMU_DRAM_START ; entry < ((pa_t) (QEMU_DRAM_START + 0x2000000)); entry += 0x1000) { // allocates 2mb of kernel heap space in ram
+    if (map_page(kernel_L0_kva, PA_TO_KVA(entry), entry, normal_mem)) {
       return -1;
     }
   }
 
-  configure_mmu(kernel_L0,user_L0);
+  set_ttbr1_addr((uint64) kernel_L0);
+
   return 0;
 }
 
@@ -72,7 +77,7 @@ int map_page(pte_t* base_table, va_t virtual_address, pa_t physical_address, pte
     base_table[L0_index] = ((pte_t) (base_tb_ptr) | TABLE_DESCRIPTOR | VALID);
   }
 
-  pte_t* L1_base_table = (pte_t*)(base_table[L0_index] & TABLE_ADDR_MASK);
+  pte_t* L1_base_table = (pte_t*) PA_TO_KVA(base_table[L0_index] & TABLE_ADDR_MASK);
   va_t L1_index = (virtual_address >> TABLE_SHIFT(1)) & PAGE_BIT_ENTRIES;
 
   if (!L1_base_table[L1_index]) {
@@ -83,7 +88,7 @@ int map_page(pte_t* base_table, va_t virtual_address, pa_t physical_address, pte
     L1_base_table[L1_index] = ((pte_t) (L1_tb_ptr) | TABLE_DESCRIPTOR | VALID);
   }
 
-  pte_t* L2_base_table = (pte_t*)(L1_base_table[L1_index] & TABLE_ADDR_MASK);
+  pte_t* L2_base_table = (pte_t*) PA_TO_KVA(L1_base_table[L1_index] & TABLE_ADDR_MASK);
   va_t L2_index = (virtual_address >> TABLE_SHIFT(2)) & PAGE_BIT_ENTRIES;
 
   if (!L2_base_table[L2_index]) {
@@ -94,7 +99,7 @@ int map_page(pte_t* base_table, va_t virtual_address, pa_t physical_address, pte
     L2_base_table[L2_index] = ((pte_t) (L2_tb_ptr) | TABLE_DESCRIPTOR | VALID);
   }
   
-  pte_t* L3_base_table = (pte_t*) (L2_base_table[L2_index] & TABLE_ADDR_MASK);
+  pte_t* L3_base_table = (pte_t*) PA_TO_KVA(L2_base_table[L2_index] & TABLE_ADDR_MASK);
   va_t L3_index = (virtual_address >> TABLE_SHIFT(3)) & PAGE_BIT_ENTRIES;
 
   if (L3_base_table[L3_index] & VALID) {
@@ -112,19 +117,19 @@ int unmap_page(pte_t* base_table, va_t virtual_address) {
     return -1;
   }
 
-  pte_t* L1_base_table = (pte_t*)(base_table[L0_index] & TABLE_ADDR_MASK);
+  pte_t* L1_base_table = (pte_t*) PA_TO_KVA(base_table[L0_index] & TABLE_ADDR_MASK);
   va_t L1_index = (virtual_address >> TABLE_SHIFT(1)) & PAGE_BIT_ENTRIES;
   if (!(L1_base_table[L1_index] & VALID)) {
     return -1;
   }
 
-  pte_t* L2_base_table = (pte_t*)(L1_base_table[L1_index] & TABLE_ADDR_MASK);
+  pte_t* L2_base_table = (pte_t*) PA_TO_KVA(L1_base_table[L1_index] & TABLE_ADDR_MASK);
   va_t L2_index = (virtual_address >> TABLE_SHIFT(2)) & PAGE_BIT_ENTRIES;
   if (!(L2_base_table[L2_index] & VALID)) {
     return -1;
   }
 
-  pte_t* L3_base_table = (pte_t*) (L2_base_table[L2_index] & TABLE_ADDR_MASK);
+  pte_t* L3_base_table = (pte_t*) PA_TO_KVA(L2_base_table[L2_index] & TABLE_ADDR_MASK);
   va_t L3_index = (virtual_address >> TABLE_SHIFT(3)) & PAGE_BIT_ENTRIES;
   if (!(L3_base_table[L3_index] & VALID)) {
     return -1;
@@ -135,15 +140,15 @@ int unmap_page(pte_t* base_table, va_t virtual_address) {
   // if the page table is empty corresponding to its level, then the underlying physical page is freed
   if (is_table_free(L3_base_table)) {
     L2_base_table[L2_index] = 0;
-    pmm_free((pa_t*)L3_base_table);
+    pmm_free((pa_t*)KVA_TO_PA(L3_base_table));
 
     if (is_table_free(L2_base_table)) {
       L1_base_table[L1_index] = 0;
-      pmm_free((pa_t*)L2_base_table);
+      pmm_free((pa_t*)KVA_TO_PA(L2_base_table));
   
       if (is_table_free(L1_base_table)) {
         base_table[L0_index] = 0;
-        pmm_free((pa_t*)L1_base_table);
+        pmm_free((pa_t*)KVA_TO_PA(L1_base_table));
       }
     }
   }
@@ -158,7 +163,7 @@ void debug_va(pte_t* base_table, va_t virtual_address) {
     }
     kprintf("L0 Page Table Index: %d -- L0 Page Table Entry: %p\n", L0_index, base_table[L0_index]);
 
-    pte_t* L1_base_table = (pte_t*)(base_table[L0_index] & TABLE_ADDR_MASK);
+    pte_t* L1_base_table = (pte_t*)PA_TO_KVA(base_table[L0_index] & TABLE_ADDR_MASK);
     va_t L1_index = (virtual_address >> TABLE_SHIFT(1)) & PAGE_BIT_ENTRIES;
     if (!L1_base_table[L1_index]) {
       kprintf("UNMAPPED ERROR\n");
@@ -166,7 +171,7 @@ void debug_va(pte_t* base_table, va_t virtual_address) {
     }
     kprintf("L1 Page Table Index: %d -- L1 Page Table Entry: %p\n", L1_index, L1_base_table[L1_index]);
 
-    pte_t* L2_base_table = (pte_t*)(L1_base_table[L1_index] & TABLE_ADDR_MASK);
+    pte_t* L2_base_table = (pte_t*)PA_TO_KVA(L1_base_table[L1_index] & TABLE_ADDR_MASK);
     va_t L2_index = (virtual_address >> TABLE_SHIFT(2)) & PAGE_BIT_ENTRIES;
     if (!L2_base_table[L2_index]) {
       kprintf("UNMAPPED ERROR\n");
@@ -174,7 +179,7 @@ void debug_va(pte_t* base_table, va_t virtual_address) {
     }
     kprintf("L2 Page Table Index: %d -- L2 Page Table Entry: %p\n", L2_index, L2_base_table[L2_index]);
 
-    pte_t* L3_base_table = (pte_t*) (L2_base_table[L2_index] & TABLE_ADDR_MASK);
+    pte_t* L3_base_table = (pte_t*)PA_TO_KVA(L2_base_table[L2_index] & TABLE_ADDR_MASK);
     va_t L3_index = (virtual_address >> TABLE_SHIFT(3)) & PAGE_BIT_ENTRIES;
     if (!L3_base_table[L3_index]) {
       kprintf("UNMAPPED ERROR\n");

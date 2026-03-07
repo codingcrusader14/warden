@@ -14,9 +14,9 @@ void pmm_init(pa_t* start, pa_t* end) {
     pa_t* current_page = start; 
     pa_t* next_page = current_page + (PAGE_SIZE / sizeof(pa_t));
     if (next_page == end) {
-      *current_page = 0;
+      *(pa_t*) PA_TO_KVA(current_page) = 0;
     } else {
-      *current_page = (pa_t)next_page;
+      *(pa_t*) PA_TO_KVA(current_page) = (pa_t)next_page;
     }
     start = next_page;
   }
@@ -26,10 +26,10 @@ pa_t* pmm_alloc() {
   if (head == NULL) {
     return NULL;
   } 
-  pa_t next_page = *head;
+  pa_t next_page = *(pa_t*) PA_TO_KVA(head);
   pa_t* current_page = head;
   head = (pa_t*)next_page;
-  memset(current_page, 0, PAGE_SIZE);
+  memset((void*) PA_TO_KVA(current_page), 0, PAGE_SIZE);
   return current_page;
 }
 
@@ -37,6 +37,6 @@ void pmm_free(pa_t* address) {
   if (address == NULL) {
     return;
   }
-  *address = (pa_t)head;
+  *(pa_t*) PA_TO_KVA(address) = (pa_t)head;
   head = address;
 }

@@ -9,9 +9,10 @@
 #define QEMU_PL011_H
 
 #include "../../kernel/types.h"
+#include "../../kernel/mmu_defs.h"
 
 /* Qemu virt mode */
-#define QEMU_PL011_BASE 0x9000000UL
+#define QEMU_PL011_BASE PA_TO_KVA(0x9000000UL)
 #define QEMU_CLOCK 24000000 // 24 * 10^6 = Hz
 #define QEMU_BAUD_RATE 38400
 #define QEMU_DATA_BITS 8
