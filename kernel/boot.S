@@ -26,7 +26,8 @@ fill_pagetables:
         str x4, [x3]
 
         ldr x4, =BOOT_NORMAL_BLOCK_ATTR
-        orr x4, x4, #KERNEL_MEMORY
+        ldr x5, =KERNEL_MEMORY
+        orr x4, x4, x5
         str x4, [x3, #8]
 
         ldr x3, = boot_ttbr0_l1
@@ -37,7 +38,8 @@ fill_pagetables:
         str x3, [x4]
         ldr x3, = boot_ttbr0_l1 
         ldr x4, =BOOT_NORMAL_BLOCK_ATTR
-        orr x4, x4, #KERNEL_MEMORY
+        ldr x5, =KERNEL_MEMORY
+        orr x4, x4, x5
         str x4, [x3, #8]
 
         ldr x0, =boot_ttbr0_l0

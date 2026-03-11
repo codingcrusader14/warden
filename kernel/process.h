@@ -33,15 +33,24 @@ typedef struct {
 } context;
 
 typedef struct {
-  context ctx;
   uint64 pid; 
   enum task_state state;
+
+  // scheduler members 
   uint64 tickets;
   uint64 stride;
   uint64 remain;
   uint64 pass;
   uint64 scheduler_tick;
-  void* stack_base; // base address of stack
+
+  // memory
+  void* kstack; // kernel stack for this process
+  void* ustack; // user stack physical base
+  uint64 code_size;
+  uint64* pgd; // physical address of TTBR0 L0 page table
+
+  context ctx; // switch() runs on this
+  void* entry_point;
 } task_t; 
 
 typedef struct {
@@ -54,6 +63,8 @@ typedef struct {
 
 extern cpu cpus[NCPU];
 
+void enter_userspace(uint64 pgd, const void* entry, void* ustack);
+void user_entry();
 void kexit();
 void yield();
 void task_trampoline();

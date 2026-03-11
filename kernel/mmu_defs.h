@@ -22,6 +22,12 @@
 #define GICD 0x8000000UL
 #define GICC 0x8010000UL
 
+/* USER SPACE */
+#define USER_BASE  0x400000
+#define USER_CODE  0x400000
+#define USER_FLAGS (ACCESS | SH_INNER_SHAREABLE | AP_READ_WRITE | AP_ALLOW_E0 | ATTRINDX(1) | PAGE_DESCRIPTOR | VALID)
+#define USER_STACK 0x800000
+
 /* Block Descriptor Bits */
 
 #define GLOBAL                    (0UL << 11) // TLB maintence across ASID

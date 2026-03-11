@@ -6,8 +6,13 @@
 #include "stddef.h"
 #include "clock.h"
 
+void write_ttbr0_el1(uint64 physical_address){
+  asm volatile("msr ttbr0_el1, %0" :: "r"(physical_address));
+}
 
 extern void context_switch(context* old, context* new);
+extern void tlb_invalidate_process(va_t virtual_address);
+
 static scheduler_t scheduler; // Fair Share Stride Scheduler - Only contains ready processes
 zombie_t cleanup; // Dead tasks for cleanup 
 static uint64 global_tickets, global_stride, global_pass;
@@ -23,9 +28,8 @@ void cleanup_dead_task() {
 
 static void global_pass_update() {
   static uint64 last_update = 0;
-  uint64 elapsed;
 
-  elapsed = get_clock_ticks() - last_update;
+  uint64 elapsed = get_clock_ticks() - last_update;
   last_update += elapsed;
 
   global_pass += (global_stride * elapsed) / QUANTUM;
@@ -121,10 +125,12 @@ int schedule() {
     find_next = false;
     next_task = scheduler_min_pass();
     if (next_task == NULL) return -1; // no tasks left
+    
     global_pass_update();
     next_task->remain = next_task->pass - global_pass;
     global_tickets_update(-next_task->tickets);
     scheduler_pop();
+
     if (next_task->state == DEAD) {
       cleanup.dead_task[cleanup.size] = next_task;
       cleanup.size++;
@@ -136,6 +142,8 @@ int schedule() {
   current_task = next_task;
   
   next_task->scheduler_tick = get_clock_ticks();
+  write_ttbr0_el1((uint64) next_task->pgd);
+  tlb_invalidate_process((va_t) 0); // asid not yet implemented
   context_switch(&old_task->ctx, &next_task->ctx);
   return 0;
 }
