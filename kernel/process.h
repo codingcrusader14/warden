@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "global.h"
+#include "spinlock.h"
 
 extern uint64 next_pid;
 
@@ -32,7 +33,7 @@ typedef struct {
   uint64 sp; // stack pointer
 } context;
 
-typedef struct {
+typedef struct task{
   uint64 pid; 
   enum task_state state;
 
@@ -51,6 +52,7 @@ typedef struct {
 
   context ctx; // switch() runs on this
   void* entry_point;
+  struct task* next_wait;
 } task_t; 
 
 typedef struct {
@@ -65,9 +67,11 @@ extern cpu cpus[NCPU];
 
 void enter_userspace(uint64 pgd, const void* entry, void* ustack);
 void user_entry();
+void sleep(lock_t* mutex);
+void wakeup(task_t* t);
 void kexit();
 void yield();
 void task_trampoline();
-task_t* task_create(void (*entry)(void), uint64 ticket_level);
+task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level);
 void task_free(task_t* t);
 #endif

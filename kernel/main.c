@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <limits.h>
 #include <stddef.h>
 #include "../drivers/qemu/pl011.h" 
 #include "../drivers/qemu/timer.h"
@@ -11,24 +10,18 @@
 #include "schedule.h" 
 #include "process.h"
 #include "spinlock.h"
+#include "sleeplock.h"
+
+static lock_t spinlock;
+static sleeplock slock;
 
 
 void kernel_main(void) {
-   uart_init();
-   pmm_init(QEMU_DRAM_START, QEMU_DRAM_END);
-   vmm_init();
-   gic_init();
-   timer_init();
-   scheduler_init();
-   task_t* a = task_create(user_entry, NORMAL_TASK);
-   task_t* b = task_create(user_entry, NORMAL_TASK);
-
-   scheduler_add(a);
-   scheduler_add(b);
-   scheduler_start();
-
-
-  
-
-
+    uart_init();
+    pmm_init(QEMU_DRAM_START, QEMU_DRAM_END);
+    vmm_init();
+    gic_init();
+    timer_init();
+    scheduler_init();
+    scheduler_start();
 }

@@ -10,6 +10,7 @@
 #include "pmm.h"
 #include "types.h"
 #include "vmm.h"
+#include "spinlock.h"
 
 uint64 next_pid = 1;
 cpu cpus[NCPU];
@@ -37,14 +38,28 @@ void yield() {
   schedule();
 }
 
+void sleep(lock_t* mutex) {
+  current_task->state = BLOCKED;
+  unlock(mutex);
+  schedule();
+}
+
+void wakeup(task_t* t) {
+  if (t && t->state == BLOCKED) {
+      t->state = READY;
+      scheduler_add(t);
+  }
+}
+
 void task_trampoline() {
   enable_interrupts();
-  void (*entry)(void) = (void (*)(void))current_task->ctx.x19;
-  entry();
+  void (*entry)(void*) = (void (*)(void*))current_task->ctx.x19;
+  void* arg = (void*)current_task->ctx.x20;
+  entry(arg);
   kexit();
 }
 
-task_t* task_create(void (*entry)(void), uint64 ticket_level) {
+task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
   task_t* new_task = kmalloc(sizeof(task_t));
   memset(new_task, 0, sizeof(task_t));
   new_task->kstack = kmalloc(STACK_SIZE);
@@ -55,12 +70,14 @@ task_t* task_create(void (*entry)(void), uint64 ticket_level) {
   new_task->pass = 0;
   new_task->remain = new_task->stride;
   new_task->scheduler_tick = 0;
+  new_task->next_wait = NULL;
 
   uint64 sp_top = ((uint64) new_task->kstack + STACK_SIZE) & ~0xF;
 
   memset(&new_task->ctx, 0, sizeof(context));
   new_task->ctx.x30 = (uint64)task_trampoline;
   new_task->ctx.x19 = (uint64)entry; 
+  new_task->ctx.x20 = (uint64)args;
   new_task->ctx.sp = sp_top;
 
   /* allocate user page table */
