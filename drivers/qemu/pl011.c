@@ -1,6 +1,8 @@
 #include "pl011.h"
+#include "../../kernel/libk/includes/stdio.h"
 
 static pl011 uart;
+static uart_buf ubuf;
 
 static inline uint32 pl011_read(enum pl011_registers offset) {
     return *(volatile uint32*) (QEMU_PL011_BASE + offset);
@@ -28,6 +30,14 @@ static void wait_tx_ready() {
 static void wait_rx_ready() {
   while (pl011_read(FLAG_OFFSET) & FLAG_RXFE) {}
 }
+
+static void uart_buf_init() {
+  ubuf.read = 0;
+  ubuf.write = 0;
+  lock_init(&ubuf.spinlock);
+  wait_queue_init(&ubuf.rx_wait);
+}
+
 
 static int pl011_reset_qemu(const pl011 *dev) {
     const uint32 control_register = pl011_read(CONTROL_OFFSET);
@@ -69,7 +79,8 @@ static int pl011_reset_qemu(const pl011 *dev) {
     pl011_write(INTERRUPT_CLEAR_OFFSET, 0x7FF); // bits 11:15 are reserved
 
     /* Mask (disable) all interrupts */
-    pl011_write(INTERRUPT_MASK_SET_CLEAR_OFFSET, 0x000); // bits 11:15 are reserved
+    pl011_write(INTERRUPT_MASK_SET_CLEAR_OFFSET, (0x000 | IMSC_RXIM)); // bits 11:15 are reserved
+  
     
     /* Disable DMA */
     uint32 dma_register = pl011_read(DMA_CONTROL_OFFSET);
@@ -77,9 +88,12 @@ static int pl011_reset_qemu(const pl011 *dev) {
 
     /* Enable UART transmission/receiving */
     pl011_write(CONTROL_OFFSET, (CR_TXE | CR_UARTEN | CR_RXE));
-    
+
+    /* Initialize UART buffer */
+    uart_buf_init();
     return 0;
 }
+
 
 static int pl011_setup_qemu(pl011 *dev) {
     dev->clock = QEMU_CLOCK;
@@ -110,6 +124,53 @@ int get_char() {
 void put_char(char c) {
     wait_tx_ready();
     pl011_write(DATA_OFFSET, c);
+}
+
+static void put(char value) {
+  if (ubuf.write - ubuf.read == UART_BUF_SIZE) return; // buffer full drop data
+
+  ubuf.buffer[ubuf.write & (UART_BUF_SIZE - 1)] = value;
+  ubuf.write++;
+}
+
+static char get() {
+  char tmp = ubuf.buffer[ubuf.read & (UART_BUF_SIZE - 1)];
+  ubuf.read++;
+  return tmp;
+}
+
+void uart_isr() {
+  lock(&ubuf.spinlock); 
+  while (!(pl011_read(FLAG_OFFSET) & FLAG_RXFE)) {
+    char c = pl011_read(DATA_OFFSET);
+    put(c);
+  }
+  wait_queue_wakeup(&ubuf.rx_wait);
+  pl011_write(INTERRUPT_CLEAR_OFFSET, ICR_RXIC);
+  unlock(&ubuf.spinlock);
+}
+
+int uart_read() {
+  lock(&ubuf.spinlock);
+
+  while (ubuf.read == ubuf.write) {
+    wait_queue_sleep(&ubuf.rx_wait, &ubuf.spinlock);
+  }
+
+  int c = get();
+  unlock(&ubuf.spinlock);
+  return c;
+}
+
+int uart_try_read() {
+  lock(&ubuf.spinlock);
+  if (ubuf.read == ubuf.write) {
+    unlock(&ubuf.spinlock);
+    return -1;
+  }
+  int c = get();
+  unlock(&ubuf.spinlock);
+  return c;
 }
 
 

@@ -69,7 +69,7 @@ void enter_userspace(uint64 pgd, const void* entry, void* ustack);
 void user_entry();
 void sleep(lock_t* mutex);
 void wakeup(task_t* t);
-void kexit();
+int kexit();
 void yield();
 void task_trampoline();
 task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level);

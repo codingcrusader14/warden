@@ -5,15 +5,19 @@
 #include "../drivers/qemu/gic.h"
 #include "libk/includes/stdio.h"
 #include "libk/includes/stdlib.h"
+#include "syscall.h"
 #include "vmm.h"
 #include "pmm.h"
 #include "schedule.h" 
 #include "process.h"
-#include "spinlock.h"
-#include "sleeplock.h"
+#include "../user/user_syscall.h"
 
-static lock_t spinlock;
-static sleeplock slock;
+void idle(void* args) {
+ (void)args;
+ while (1) {
+  
+ }
+}
 
 
 void kernel_main(void) {
@@ -23,5 +27,9 @@ void kernel_main(void) {
     gic_init();
     timer_init();
     scheduler_init();
+    task_t* a = task_create((void (*)(void*))user_entry,NULL, NORMAL_TASK);
+    task_t* b = task_create(idle, NULL, NORMAL_TASK);
+    scheduler_add(a);
+    scheduler_add(b);
     scheduler_start();
 }

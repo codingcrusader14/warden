@@ -37,10 +37,30 @@ void write_end_of_interrupt(uint32 interrupt_id) {
   gicc_write(END_OF_INTERRUPT_REGISTER, interrupt_id);
 }
 
+static inline void gic_enable_irq(uint32 interrupt_id) {
+  uint32 reg_offset = INTERRUPT_SET_ENABLE + (4 * (interrupt_id / 32));
+  gicd_write(reg_offset, (1 << (interrupt_id % 32)));
+}
+
+static inline void gic_set_target(uint32 interrupt_id, uint32 cpu_mask) {
+  uint32 reg_offset = INTERRUPT_TARGET + (interrupt_id & ~3);
+  uint32 byte_shift = (interrupt_id % 4) * 8;
+  uint32 val = gicd_read(reg_offset);
+  val &= ~(0xFF << byte_shift);
+  val |= (cpu_mask << byte_shift);
+  gicd_write(reg_offset, val);
+}
+
 void gic_init() {
   gicd_write(DISTRIBUTOR_CONTROL_REGISTER, ENABLE_FORWARDING);
-  gicd_write(INTERRUPT_SET_ENABLE_REGISTERS, ENABLE_TIMER_BIT);
+
+  gic_enable_irq(TIMER_PPI_ID);
   gic_set_priority(TIMER_PPI_ID, 0x00); 
+
+  gic_enable_irq(UART);
+  gic_set_priority(UART, 0x00);
+  gic_set_target(UART, 0x01); // CPU 0
+
   gicc_write(INTERRUPT_PRIORITY_MASK_REGISTER, PRIORITY_FILTER);
   gicc_write(CPU_INTERFACE_CONTROL_REGISTER, ENABLE_SIGNALING);
 }

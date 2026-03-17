@@ -10,6 +10,8 @@
 
 #include "../../kernel/types.h"
 #include "../../kernel/mmu_defs.h"
+#include "../../kernel/spinlock.h"
+#include "../../kernel/wait_queue.h"
 
 /* Qemu virt mode */
 #define QEMU_PL011_BASE PA_TO_KVA(0x9000000UL)
@@ -17,6 +19,7 @@
 #define QEMU_BAUD_RATE 38400
 #define QEMU_DATA_BITS 8
 #define QEMU_STOP_BITS 1
+#define UART_BUF_SIZE 256
 
 /* PL011 Registers */
 enum pl011_registers {
@@ -35,6 +38,14 @@ enum pl011_registers {
   DMA_CONTROL_OFFSET                 = 0x048,
 };
 
+typedef struct { // circular buffer
+  char buffer[UART_BUF_SIZE];
+  uint32 read; // where to start next read
+  uint32 write; // where to store next write
+  lock_t spinlock;
+  wait_queue rx_wait; // tasks go to sleep here awaiting to be woken
+} uart_buf;
+
 /* Register specific bits */
 enum flag {
   FLAG_TXFE = (1 << 7), // Transmit FIFO empty
@@ -45,14 +56,22 @@ enum flag {
 };
 
 enum control {
-    CR_RXE = (1 << 9),
-    CR_TXE = (1 << 8),
-    CR_UARTEN = (1 << 0),
+  CR_RXE = (1 << 9),
+  CR_TXE = (1 << 8),
+  CR_UARTEN = (1 << 0),
 };
 
 enum line_control {
-    LCR_FEN = (1 << 4),
-    LCR_STP2 = (1 << 3),   
+  LCR_FEN = (1 << 4),
+  LCR_STP2 = (1 << 3),   
+};
+
+enum interrupt_mask_set_clear {
+  IMSC_RXIM = (1 << 4), // Recieve interrupt on
+};
+
+enum interrupt_clear_register {
+  ICR_RXIC = (1 << 4), // Clear receive interrupt
 };
 
 typedef struct pl011 {
@@ -66,6 +85,9 @@ void uart_init();
 int send_message(const char *data);
 int get_char();
 void put_char(char c);
+void uart_isr();
+int uart_read(); // sleeps
+int uart_try_read();
 
 #endif
 

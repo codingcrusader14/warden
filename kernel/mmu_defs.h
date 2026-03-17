@@ -7,6 +7,7 @@
 
 #define PAGE_SIZE 4096 // 4KB 
 #define PAGE_SHIFT 12 // 2^12 = Page Size
+#define PAGE_BITS 0xFFF
 #define VA_BITS 48 // Virtual Address
 #define TABLE_ENTRIES (PAGE_SIZE / 8)
 
@@ -40,6 +41,7 @@
 #define SH_INNER_SHAREABLE        (0x3UL << SH_SHIFT)  
 
 #define AP_READ_WRITE             (0UL << 7) // Privileged read and write
+#define AP_READ_ONLY              (1UL << 7) // Read only
 #define AP_ALLOW_E0               (1UL << 6) // Allow user mode
 #define NS                        (1UL << 5) // Secure vs Non Secure access
 

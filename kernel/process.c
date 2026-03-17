@@ -21,7 +21,7 @@ void user_entry() {
   enter_userspace((uint64)current_task->pgd, current_task->entry_point, current_task->ustack);
 }
 
-void kexit() {
+int kexit() {
   current_task->state = DEAD;
   int ret = schedule();
   if (ret == -1) {
@@ -29,8 +29,8 @@ void kexit() {
       disable_interrupts();
       while (1);
     }
-    kprintf("Panic: kexit should not return.\n");
-    while (1);
+  kprintf("Panic: kexit should not return.\n");
+  while (1);
 }
 
 void yield() {
@@ -42,6 +42,7 @@ void sleep(lock_t* mutex) {
   current_task->state = BLOCKED;
   unlock(mutex);
   schedule();
+  lock(mutex);
 }
 
 void wakeup(task_t* t) {

@@ -188,3 +188,40 @@ void debug_va(pte_t* base_table, va_t virtual_address) {
     kprintf("L3 Page Table Index: %d -- L3 Page Table Entry: %p\n", L3_index, L3_base_table[L3_index]);
   }
 
+static pte_t* walk(pte_t* base, va_t va) {
+  size_t l0 = (va >> TABLE_SHIFT(0)) & PAGE_BIT_ENTRIES;
+  if (!(base[l0] & VALID)) return NULL;
+
+  pte_t* l1 = (pte_t*)PA_TO_KVA(base[l0] & TABLE_ADDR_MASK);
+  size_t l1_index = (va >> TABLE_SHIFT(1)) & PAGE_BIT_ENTRIES;
+  if (!(l1[l1_index] & VALID)) return NULL;
+
+  pte_t* l2 = (pte_t*)PA_TO_KVA(l1[l1_index] & TABLE_ADDR_MASK);
+  size_t l2_index = (va >> TABLE_SHIFT(2)) & PAGE_BIT_ENTRIES;
+  if (!(l2[l2_index] & VALID)) return NULL;
+
+  pte_t* l3 = (pte_t*)PA_TO_KVA(l2[l2_index] & TABLE_ADDR_MASK);
+  size_t l3_index = (va >> TABLE_SHIFT(3)) & PAGE_BIT_ENTRIES;
+  if (!(l3[l3_index] & VALID)) return NULL;
+
+  return &l3[l3_index];
+}
+
+int copy_to_user(pte_t* user_pt, void* dst, const void* src, size_t len) {
+  uintptr_t addr = (uintptr_t)dst;
+  uintptr_t end = addr + len;
+
+  if (end < addr) return -1;
+  if (addr >= KERNEL_HIGH_VA_ADDRESS) return -1;
+  if (end > KERNEL_HIGH_VA_ADDRESS) return -1;
+
+  for (va_t page = addr & ~PAGE_BITS; page <= end - 1; page += PAGE_SIZE) {
+    pte_t* pte = walk(user_pt, page);
+    if (!pte) return -1;
+    if (!(*pte & AP_ALLOW_E0)) return -1;
+    if (*pte & AP_READ_ONLY) return -1;
+  }
+
+  memcpy(dst, src, len);
+  return 0;
+}
