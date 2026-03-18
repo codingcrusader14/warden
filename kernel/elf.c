@@ -59,7 +59,10 @@ uint64 parse_and_map_elf(const void* elf_buf, size_t len, task_t* proc) {
       if (segment.offset + segment.filesz > len) 
         return 0;
       
-      code_size += segment.memsz;
+      uint64 seg_end = segment.vaddr + segment.memsz;
+      if (seg_end > code_size) {
+        code_size = seg_end;
+      }
       uint64 num_pages = (segment.memsz + PAGE_SIZE - 1) / PAGE_SIZE;
       for (uint64 j = 0; j < num_pages; ++j) {
         pa_t page = (pa_t)pmm_alloc();
@@ -74,6 +77,7 @@ uint64 parse_and_map_elf(const void* elf_buf, size_t len, task_t* proc) {
       }
     }
   }
+  proc->brk = (code_size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
   proc->code_size = code_size;
   return elf.e_entry;
 }

@@ -6,6 +6,7 @@
 #define BOOT_TABLE_ATTR (TABLE_DESCRIPTOR | VALID)
 
 #define PAGE_SIZE 4096 // 4KB 
+#define PTE_SIZE 8
 #define PAGE_SHIFT 12 // 2^12 = Page Size
 #define PAGE_BITS 0xFFF
 #define VA_BITS 48 // Virtual Address

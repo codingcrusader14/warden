@@ -60,7 +60,7 @@ void task_trampoline() {
   kexit();
 }
 
-task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
+task_t* task_alloc(uint64 ticket_level) {
   task_t* new_task = kmalloc(sizeof(task_t));
   memset(new_task, 0, sizeof(task_t));
   new_task->kstack = kmalloc(STACK_SIZE);
@@ -72,9 +72,17 @@ task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
   new_task->remain = new_task->stride;
   new_task->scheduler_tick = 0;
   new_task->next_wait = NULL;
+  new_task->parent = NULL;
+  new_task->children = NULL;
+  new_task->sibling = NULL;
+  wait_queue_init(&new_task->child_wq);
+  return new_task;
+}
+
+task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
+  task_t* new_task = task_alloc(ticket_level);
 
   uint64 sp_top = ((uint64) new_task->kstack + STACK_SIZE) & ~0xF;
-
   memset(&new_task->ctx, 0, sizeof(context));
   new_task->ctx.x30 = (uint64)task_trampoline;
   new_task->ctx.x19 = (uint64)entry; 

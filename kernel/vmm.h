@@ -14,6 +14,7 @@ int map_page(pte_t* base_table, va_t virtual_address, pa_t physical_address, pte
 int unmap_page(pte_t* base_table, va_t virtual_address);
 void debug_va(pte_t* base_table, va_t virtual_address);
 int copy_to_user(pte_t* user_pt, void* dst, const void* src, size_t len);
+int copy_user_pagetable(pte_t* parent_pgd, pte_t* child_pgd);
 
 
 #endif 

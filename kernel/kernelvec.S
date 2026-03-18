@@ -61,6 +61,8 @@ sync_exception:
         bl save_regs
         mov x0, sp
         bl kernelvec_sync
+.globl fork_return
+fork_return:
         bl restore_regs 
         ldr x30, [sp, #240]
         add sp, sp, 288

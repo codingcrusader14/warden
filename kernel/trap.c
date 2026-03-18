@@ -9,6 +9,7 @@
 #include "types.h"
 
 void kernelvec_sync(struct trapframe *tf) {
+  current_task->tf = tf;
   uint64 ec = (tf->esr_el1 >> 26) & (0x3F);
   switch (ec) {
   case 0x15: { // system calls
@@ -47,6 +48,23 @@ void kernelvec_sync(struct trapframe *tf) {
       break;
     }
 
+    case SYS_FORK: {
+      tf->x0 = handle_fork();
+      break;
+    }
+
+    case SYS_WAIT: {
+      int* status = (int*)tf->x0;
+      tf->x0 = handle_wait(status);
+      break;
+    }
+
+    case SYS_SBRK: {
+      int incr = (int)tf->x0;
+      tf->x0 = (uint64)handle_sbrk(incr);
+      break;
+    }
+
     default: {
       kprintf("Syscall does not exist\n");
       break;
@@ -67,7 +85,7 @@ void kernelvec_sync(struct trapframe *tf) {
   }
 }
 void kernelvec_irq(struct trapframe *tf) {
-  UNUSED(tf);
+  current_task->tf = tf;
   uint32 ack_id = read_interrupt_ack();
   switch (ack_id) {
   case 30: {

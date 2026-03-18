@@ -225,3 +225,43 @@ int copy_to_user(pte_t* user_pt, void* dst, const void* src, size_t len) {
   memcpy(dst, src, len);
   return 0;
 }
+
+int copy_user_pagetable(pte_t* parent_pgd, pte_t* child_pgd) {
+  pte_t pt_rows = (PAGE_SIZE / PTE_SIZE);
+
+  for (va_t l0_index = 0; l0_index < pt_rows; ++l0_index) {
+    if (!(parent_pgd[l0_index] & VALID)) continue;
+    pte_t* l0_table = (pte_t*)PA_TO_KVA(parent_pgd[l0_index] & TABLE_ADDR_MASK);
+
+    for (va_t l1_index = 0; l1_index < pt_rows; ++l1_index) {
+      if (!(l0_table[l1_index] & VALID)) continue;
+      pte_t* l1_table = (pte_t*)PA_TO_KVA(l0_table[l1_index] & TABLE_ADDR_MASK);
+
+      for (va_t l2_index = 0; l2_index < pt_rows; ++l2_index) {
+        if (!(l1_table[l2_index] & VALID)) continue;
+        pte_t* l2_table = (pte_t*)PA_TO_KVA(l1_table[l2_index] & TABLE_ADDR_MASK);
+
+        for (va_t l3_index = 0; l3_index < pt_rows; ++l3_index) {
+          if (!(l2_table[l3_index] & VALID)) continue;
+
+          pte_t entry = l2_table[l3_index];
+          pa_t physical_address = entry & TABLE_ADDR_MASK;
+          uint64 flags = entry & ~TABLE_ADDR_MASK;
+          pte_t* child_page = pmm_alloc();
+          if (!child_page) {
+            kprintf("Child page failed to allocate\n");
+            return -1;
+          }
+          memcpy((void*)PA_TO_KVA(child_page),(void*)PA_TO_KVA(physical_address), PAGE_SIZE);
+          va_t va = (l0_index << TABLE_SHIFT(0)) | (l1_index << TABLE_SHIFT(1)) | (l2_index << TABLE_SHIFT(2)) | (l3_index << TABLE_SHIFT(3));
+          int code = map_page(child_pgd, va, (pa_t) child_page, flags);
+          if (code < 0) {
+            kprintf("Failed to map page\n");
+            return -1;
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}

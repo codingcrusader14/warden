@@ -4,6 +4,8 @@
 #include "types.h"
 #include "global.h"
 #include "spinlock.h"
+#include "trap.h"
+#include "wait_queue.h"
 
 extern uint64 next_pid;
 
@@ -15,6 +17,7 @@ enum task_state {
   RUNNING,
   BLOCKED,
   DEAD,
+  ZOMBIE,
 };
 
 typedef struct {
@@ -36,24 +39,26 @@ typedef struct {
 typedef struct task{
   uint64 pid; 
   enum task_state state;
-
-  // scheduler members 
+  int exit_status;
   uint64 tickets;
   uint64 stride;
   uint64 remain;
   uint64 pass;
   uint64 scheduler_tick;
-
-  // memory
+  trapframe* tf; // trapframe
   void* kstack; // kernel stack for this process
   void* ustack; // user stack physical base
-  uint64 code_size;
+  uint64 code_size; // total size of program 
+  uint64 brk; // top address of heap
   uint64* pgd; // physical address of TTBR0 L0 page table
-
   context ctx; // switch() runs on this
   void* entry_point;
   struct task* next_wait;
-} task_t; 
+  struct task* parent;
+  struct task* children;
+  struct task* sibling;
+  wait_queue child_wq;
+} task_t;
 
 typedef struct {
   task_t* current_task; 
@@ -72,6 +77,7 @@ void wakeup(task_t* t);
 int kexit();
 void yield();
 void task_trampoline();
+task_t* task_alloc(uint64 ticket_level);
 task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level);
 void task_free(task_t* t);
 #endif

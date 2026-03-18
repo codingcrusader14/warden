@@ -10,11 +10,17 @@
 #define SYS_WRITE  2
 #define SYS_READ   3
 #define SYS_GETPID 4
+#define SYS_FORK   5 
+#define SYS_WAIT   6
+#define SYS_SBRK   7
 
 int handle_sys_exit(int status);
 void handle_sys_yield();
 ssize_t handle_sys_write(int fd, const void* buf, size_t len);
 ssize_t handle_sys_read(int fd, void* buf, size_t len);
-int handle_getpid();
+pid_t handle_getpid();
+pid_t handle_fork();
+pid_t handle_wait(int* status);
+void* handle_sbrk(int incr);
 
 #endif 

@@ -1,8 +1,8 @@
 #ifndef WAIT_QUEUE_H
 #define WAIT_QUEUE_H
 
-#include "process.h"
 #include "spinlock.h"
+typedef struct task task_t;
 
 typedef struct {
   task_t* head;
