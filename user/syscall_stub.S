@@ -16,3 +16,4 @@ SYSCALL sys_getpid, 4
 SYSCALL sys_fork,   5
 SYSCALL sys_wait,   6
 SYSCALL sys_sbrk,   7
+SYSCALL sys_close,  8

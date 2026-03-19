@@ -11,11 +11,12 @@
 #include "schedule.h" 
 #include "process.h"
 #include "../user/user_syscall.h"
+#include "console.h"
 
 void idle(void* args) {
  (void)args;
  while (1) {
-  
+
  }
 }
 
@@ -28,6 +29,16 @@ void kernel_main(void) {
     timer_init();
     scheduler_init();
     task_t* a = task_create((void (*)(void*))user_entry,NULL, NORMAL_TASK);
+    file *f_stdin = file_alloc(FILE_CONSOLE, &console_ops, NULL);
+    file *f_stdout = file_alloc(FILE_CONSOLE, &console_ops, NULL);
+    file *f_stderr = file_alloc(FILE_CONSOLE, &console_ops, NULL);
+    if (!f_stdin || !f_stdout || !f_stderr) {
+      kprintf("Error: file descriptors failed to allocate\n");
+      return;
+    }
+    a->fd_table[0] = f_stdin;
+    a->fd_table[1] = f_stdout;
+    a->fd_table[2] = f_stderr;
     task_t* b = task_create(idle, NULL, NORMAL_TASK);
     scheduler_add(a);
     scheduler_add(b);

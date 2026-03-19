@@ -4,6 +4,7 @@
 #include "mmu_defs.h"
 #include "process.h"
 #include "schedule.h"
+#include "file.h"
 #include "trap.h"
 #include "types.h"
 #include "vmm.h"
@@ -32,54 +33,24 @@ ssize_t handle_sys_write(int fd, const void* buf, size_t len) {
   if (!buf || len == 0) 
     return 0;
 
-  switch (fd) {
-    case 1: {
-      const char* cbuf = (const char*)buf;
-      ssize_t bytes_written = 0;
-      for (size_t i = 0; i < len; ++i) {
-        put_char(cbuf[i]);
-        bytes_written++;
-      }
-      return bytes_written;
-    }
-
-    default: {
-      return 0;
-    }
+  file* f_write = fd_to_file(current_task, fd);
+  if (!f_write) {
+    return 0;
   }
+  
+  return f_write->ops->write(f_write, buf, len);
 }
 
 ssize_t handle_sys_read(int fd, void *buf, size_t len) {
   if (!buf || len == 0)
-    return -1;
+    return 0;
 
-  switch (fd) {
-  case 0: { // stdin
-    unsigned char kbuf[256];
-    len = (len < 256) ? len : 256;
-
-    kbuf[0] = uart_read();
-    ssize_t chars_read = 1;
-
-    for (size_t i = 1; i < len; ++i) {
-      int character = uart_try_read();
-      if (character < 0)
-        break;
-      kbuf[i] = character;
-      chars_read++;
-    }
-
-    if (copy_to_user((pte_t *)PA_TO_KVA(current_task->pgd), buf, kbuf,
-                     chars_read) < 0)
-      return -1;
-
-    return chars_read;
-  } break;
-
-  default: { // not implemented
-    return -1;
+  file* f_read = fd_to_file(current_task, fd);
+  if (!f_read) {
+    return 0;
   }
-  }
+
+  return f_read->ops->read(f_read, buf, len);
 }
 
 pid_t handle_getpid() { return current_task->pid; }
@@ -87,6 +58,15 @@ pid_t handle_getpid() { return current_task->pid; }
 pid_t handle_fork() {
   task_t* parent = current_task;
   task_t* child = task_alloc(parent->tickets); // copy parents priority within scheduler
+
+    // copy parent file descriptor entries 
+  for (size_t i = 0; i < MAX_FDS; ++i) {
+    if (parent->fd_table[i]) {
+      child->fd_table[i] = parent->fd_table[i];
+      file_ref(child->fd_table[i]);
+    }
+  }
+
   child->pass = parent->pass;
   child->remain = parent->remain;
   child->scheduler_tick = parent->scheduler_tick;
@@ -168,4 +148,14 @@ void* handle_sbrk(int incr) {
   }
   current_task->brk = new_brk;
   return (void*)old_brk;
+}
+
+int handle_close(int fd) {
+  file* f_close = fd_to_file(current_task, fd);
+  if (!f_close) {
+    return 0;
+  }
+  current_task->fd_table[fd] = NULL;
+  int64 rc = file_close(f_close);
+  return rc;
 }

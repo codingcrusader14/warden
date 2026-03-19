@@ -1,36 +1,41 @@
 #include "process.h"
-#include "mmu_defs.h"
-#include "schedule.h"
-#include "elf.h"
 #include "../drivers/qemu/timer.h"
+#include "elf.h"
+#include "file.h"
+#include "global.h"
+#include "libk/includes/stdio.h"
 #include "libk/includes/stdlib.h"
 #include "libk/includes/string.h"
-#include "libk/includes/stdio.h"
-#include "global.h"
+#include "console.h"
+#include "mmu_defs.h"
 #include "pmm.h"
+#include "schedule.h"
+#include "spinlock.h"
 #include "types.h"
 #include "vmm.h"
-#include "spinlock.h"
 
 uint64 next_pid = 1;
 cpu cpus[NCPU];
 
-extern void enter_userspace(uint64 pgd, const void* entry, void* ustack);
+extern void enter_userspace(uint64 pgd, const void *entry, void *ustack);
 
 void user_entry() {
-  enter_userspace((uint64)current_task->pgd, current_task->entry_point, current_task->ustack);
+  enter_userspace((uint64)current_task->pgd, current_task->entry_point,
+                  current_task->ustack);
 }
 
 int kexit() {
   current_task->state = DEAD;
   int ret = schedule();
   if (ret == -1) {
-      kprintf("All tasks complete. Halting.\n");
-      disable_interrupts();
-      while (1);
-    }
+    kprintf("All tasks complete. Halting.\n");
+    disable_interrupts();
+    while (1)
+      ;
+  }
   kprintf("Panic: kexit should not return.\n");
-  while (1);
+  while (1)
+    ;
 }
 
 void yield() {
@@ -38,30 +43,30 @@ void yield() {
   schedule();
 }
 
-void sleep(lock_t* mutex) {
+void sleep(lock_t *mutex) {
   current_task->state = BLOCKED;
   unlock(mutex);
   schedule();
   lock(mutex);
 }
 
-void wakeup(task_t* t) {
+void wakeup(task_t *t) {
   if (t && t->state == BLOCKED) {
-      t->state = READY;
-      scheduler_add(t);
+    t->state = READY;
+    scheduler_add(t);
   }
 }
 
 void task_trampoline() {
   enable_interrupts();
-  void (*entry)(void*) = (void (*)(void*))current_task->ctx.x19;
-  void* arg = (void*)current_task->ctx.x20;
+  void (*entry)(void *) = (void (*)(void *))current_task->ctx.x19;
+  void *arg = (void *)current_task->ctx.x20;
   entry(arg);
   kexit();
 }
 
-task_t* task_alloc(uint64 ticket_level) {
-  task_t* new_task = kmalloc(sizeof(task_t));
+task_t *task_alloc(uint64 ticket_level) {
+  task_t *new_task = kmalloc(sizeof(task_t));
   memset(new_task, 0, sizeof(task_t));
   new_task->kstack = kmalloc(STACK_SIZE);
   new_task->pid = next_pid++;
@@ -79,18 +84,17 @@ task_t* task_alloc(uint64 ticket_level) {
   return new_task;
 }
 
-task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
-  task_t* new_task = task_alloc(ticket_level);
-
-  uint64 sp_top = ((uint64) new_task->kstack + STACK_SIZE) & ~0xF;
+task_t *task_create(void (*entry)(void *), void *args, uint64 ticket_level) {
+  task_t *new_task = task_alloc(ticket_level);
+  uint64 sp_top = ((uint64)new_task->kstack + STACK_SIZE) & ~0xF;
   memset(&new_task->ctx, 0, sizeof(context));
   new_task->ctx.x30 = (uint64)task_trampoline;
-  new_task->ctx.x19 = (uint64)entry; 
+  new_task->ctx.x19 = (uint64)entry;
   new_task->ctx.x20 = (uint64)args;
   new_task->ctx.sp = sp_top;
 
   /* allocate user page table */
-  new_task->pgd = (uint64*) alloc_page_table();
+  new_task->pgd = (uint64 *)alloc_page_table();
 
   /* map elf file */
   extern char _user_elf_start[];
@@ -104,13 +108,34 @@ task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
 
   /* map user stack */
   pa_t stack = (pa_t)pmm_alloc(); // user stack segment
-  map_page(new_task->pgd, USER_STACK - PAGE_SIZE, stack, USER_FLAGS); // stack grows down
-  new_task->ustack = (void*)USER_STACK;
-  new_task->entry_point = (void*) entry_point;
+  map_page(new_task->pgd, USER_STACK - PAGE_SIZE, stack,
+           USER_FLAGS); // stack grows down
+  new_task->ustack = (void *)USER_STACK;
+  new_task->entry_point = (void *)entry_point;
   return new_task;
 }
 
-void task_free(task_t* t){
+void task_free(task_t *t) {
   kfree(t->kstack);
   kfree(t);
+}
+
+int32 find_free_fd(task_t* t, file* f) {
+  if (!t || !f) return -1;
+
+  file** fd_table = t->fd_table;
+  for (int32 i = 0; i < MAX_FDS; ++i) {
+    if (!fd_table[i]) {
+      fd_table[i] = f;
+      return i;
+    }
+  }
+  return -1;
+}
+
+file* fd_to_file(task_t* t, int32 fd) {
+  if (fd >= 0 && fd < MAX_FDS) {
+    return t->fd_table[fd];
+  }
+  return NULL;
 }

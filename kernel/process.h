@@ -2,6 +2,7 @@
 #define PROCESS_H
 
 #include "types.h"
+#include "file.h"
 #include "global.h"
 #include "spinlock.h"
 #include "trap.h"
@@ -54,10 +55,11 @@ typedef struct task{
   context ctx; // switch() runs on this
   void* entry_point;
   struct task* next_wait;
-  struct task* parent;
+  struct task* parent; // needed for fork implementation
   struct task* children;
   struct task* sibling;
   wait_queue child_wq;
+  file* fd_table[MAX_FDS]; // file descriptor table
 } task_t;
 
 typedef struct {
@@ -80,4 +82,7 @@ void task_trampoline();
 task_t* task_alloc(uint64 ticket_level);
 task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level);
 void task_free(task_t* t);
+int32 find_free_fd(task_t* t, file* f);
+file* fd_to_file(task_t* t, int32 fd);
+
 #endif
