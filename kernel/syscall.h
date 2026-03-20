@@ -14,6 +14,7 @@
 #define SYS_WAIT   6
 #define SYS_SBRK   7
 #define SYS_CLOSE  8
+#define SYS_PIPE   9
 
 
 int handle_sys_exit(int status);
@@ -25,5 +26,6 @@ pid_t handle_fork();
 pid_t handle_wait(int* status);
 void* handle_sbrk(int incr);
 int handle_close(int fd);
+int handle_pipe(int p[]);
 
 #endif 

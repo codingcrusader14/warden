@@ -8,6 +8,7 @@
 #include "trap.h"
 #include "types.h"
 #include "vmm.h"
+#include "pipe.h"
 #include "pmm.h"
 #include "wait_queue.h"
 
@@ -158,4 +159,52 @@ int handle_close(int fd) {
   current_task->fd_table[fd] = NULL;
   int64 rc = file_close(f_close);
   return rc;
+}
+
+static void pipe_error_cleanup(file* pipe_fw, file* pipe_fr) {
+    file_close(pipe_fw);
+    file_close(pipe_fr);
+}
+
+int handle_pipe(int p[]) {
+  pipe* new_pipe = pipe_alloc();
+  if (!new_pipe) 
+    return -1;
+
+  file_ops* pipe_write = &pipe_write_ops;
+  file_ops* pipe_read = &pipe_read_ops;
+  file* pipe_fw = file_alloc(FILE_PIPE_WRITE, pipe_write, new_pipe);
+  file* pipe_fr = file_alloc(FILE_PIPE_READ, pipe_read, new_pipe);
+
+  if (!pipe_fw || !pipe_fr) {
+    if (pipe_fw) 
+      file_close(pipe_fw);
+
+    if (pipe_fr)
+      file_close(pipe_fr);
+    return -1;
+  }
+
+  int32 fd_read = find_free_fd(current_task, pipe_fr);
+  if (fd_read == -1) {
+    pipe_error_cleanup(pipe_fw, pipe_fr);
+    return -1;
+  }
+  int32 fd_write = find_free_fd(current_task, pipe_fw);
+   if (fd_write == -1) {
+    current_task->fd_table[fd_read] = NULL;
+    pipe_error_cleanup(pipe_fw, pipe_fr);
+    return -1;
+  }
+
+  int fds[] = {fd_read, fd_write};
+
+   if (copy_to_user((pte_t *)PA_TO_KVA(current_task->pgd), p, fds, sizeof(int) * 2) < 0) {
+    current_task->fd_table[fd_write] = NULL;
+    current_task->fd_table[fd_read] = NULL;
+    pipe_error_cleanup(pipe_fw, pipe_fr);
+    return -1;
+   }
+
+  return 0;
 }

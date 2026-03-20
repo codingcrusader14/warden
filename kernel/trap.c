@@ -71,6 +71,12 @@ void kernelvec_sync(struct trapframe *tf) {
       break;
     }
 
+    case SYS_PIPE: {
+      int* buf = (int*)tf->x0;
+      tf->x0 = handle_pipe(buf);
+      break;
+    }
+
     default: {
       kprintf("Syscall does not exist\n");
       break;

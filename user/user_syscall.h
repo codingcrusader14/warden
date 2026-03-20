@@ -13,5 +13,6 @@ pid_t sys_fork();
 pid_t sys_wait(int* status);
 void* sys_sbrk(int incr);
 int sys_close(int fd);
+int sys_pipe(int p[]);
 
 #endif
