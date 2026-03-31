@@ -12,14 +12,15 @@
 #include "process.h"
 #include "../user/user_syscall.h"
 #include "console.h"
+#include "../drivers/virtio.h"
 
 void idle(void* args) {
  (void)args;
+ kprintf("%d\n", sizeof(virtio_blk_req));
  while (1) {
 
  }
 }
-
 
 void kernel_main(void) {
     uart_init();
