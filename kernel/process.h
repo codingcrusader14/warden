@@ -80,6 +80,7 @@ int kexit();
 void yield();
 void task_trampoline();
 task_t* task_alloc(uint64 ticket_level);
+task_t* kernel_task_create(void (*entry)(void*), void* args, uint64 ticket_level);
 task_t* task_create(void (*entry)(void*), void* args, uint64 ticket_level);
 void task_free(task_t* t);
 int32 find_free_fd(task_t* t, file* f);

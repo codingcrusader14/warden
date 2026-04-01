@@ -12,6 +12,8 @@
 #define VA_BITS 48 // Virtual Address
 #define TABLE_ENTRIES (PAGE_SIZE / 8)
 
+#define mb() __sync_synchronize() // memory barrier
+
 #define TABLE_SHIFT(N) (39 - ((N) * 9)) // L0, L1, L2, L3
 #define PAGE_BIT_ENTRIES 0x1FFUL // 2^9 PAGE_SIZE / sizeof(PTE)
 #define TABLE_ADDR_MASK 0x0000FFFFFFFFF000UL
@@ -23,6 +25,9 @@
 #define KERNEL_MEMORY 0x40080000UL
 #define GICD 0x8000000UL
 #define GICC 0x8010000UL
+#define VIRTIO_BASE 0x0a000000
+#define VIRTIO_STRIDE 0x200
+#define VIRTIO_END 0x0a003e00
 
 /* USER SPACE */
 #define USER_BASE  0x400000

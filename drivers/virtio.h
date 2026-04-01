@@ -15,9 +15,12 @@
 // 0x200 strides for a total of 32 virtio devices
 #define QEMU_VIRTIO_BASE 0x0a000000
 #define QEMU_VIRTIO_STRIDE 0x200
-#define QEMU_VIRTIO_END 0x0a003e00 
+#define QEMU_VIRTIO_END 0x0a003e00
 
 #define VIRTIO_BLK_SECTOR_SIZE 512
+#define MAGIC_NUM 0x74726976
+#define DEVICE_DISK_ID 2
+#define LEGACY 1
 
 #define VIRTIO_MMIO_MAGIC             0x000 // 0x74726976
 #define VIRTIO_MMIO_VERSION           0x004 // version should be 2, legacy is 1
@@ -28,6 +31,7 @@
 #define VIRTIO_MMIO_QUEUE_SELECT      0x030 // write only, selects queue
 #define VIRTIO_MMIO_QUEUE_NUM_MAX     0x034 // read only, max size of current queue
 #define VIRTIO_MMIO_QUEUE_NUM         0x038 // write only, size of current queue
+#define VIRTIO_MMIO_QUEUE_PFN         0x040 // where virtqueue memory lives
 #define VIRTIO_MMIO_QUEUE_READY       0x044 // read and write, ready bit
 #define VIRTIO_MMIO_QUEUE_NOTIFY      0x050 // write only, new buffers to process in a queue
 #define VIRTIO_MMIO_INTERRUPT_STATUS  0x060 // read only, 
@@ -41,6 +45,8 @@
 #define VIRTIO_MMIO_QUEUE_DEVICE_HIGH 0x0a4
 
 #define VIRTIO_QUEUE_SIZE 8 // virtio queue size
+#define VIRTIO_MMIO_QUEUE_ALIGN 0x03C
+#define VIRTIO_MMIO_GUEST_PAGE_SIZE 0x028
 
 // device status bits
 #define VIRTIO_ACKNOWLEDGE 1 // os recognizes the device as a valid virto device
@@ -93,6 +99,7 @@ typedef struct {
 #define VIRTIO_BLK_F_SEG_MAX 2 // max number of segments in a request
 #define VIRTIO_BLK_F_RO 5 // disk is read only
 #define VIRTIO_BLK_F_BLK_SIZE 6 // block size of disk
+#define VIRTIO_BLK_F_SCSI 7 // supports sci packet commands
 #define VIRTIO_BLK_F_CONFIG_WCE 11 // device can toggle its cache between writeback and writethrough modes
 #define VIRTIO_F_RING_INDIRECT_DESC 28 
 #define VIRTIO_F_RING_EVENT_IDX 29
@@ -105,5 +112,8 @@ typedef struct {
 // type of block device request
 #define VIRTIO_BLK_T_IN           0 // read
 #define VIRTIO_BLK_T_OUT          1 // write
+
+void virtio_disk_init();
+int virtio_disk_rw(void *buf, uint64 sector, int write);
 
 #endif

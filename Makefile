@@ -86,11 +86,15 @@ $(BUILD_DIR)/kernel/user_init.o: init.bin
 install-headers: | $(SYSROOT)/usr/include
 	@echo "=== No headers to install yet ==="
 
-qemu: kernel.elf
-	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf 
+disk.img:
+	dd if=/dev/zero of=disk.img bs=1M count=256
+	mkfs.fat -F 32 disk.img
 
-qemu-gdb: kernel.elf
-	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf -S -s
+qemu: kernel.elf disk.img
+	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0,
+
+qemu-gdb: kernel.elf disk.img
+	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0, -S -s
 
 dumpdtb:
 	$(QEMU) $(QEMUFLAGS) -machine virt,dumpdtb=virt.dtb

@@ -45,6 +45,12 @@ int vmm_init() {
     return -1;
   }
 
+  for (pa_t entry = (pa_t)VIRTIO_BASE; entry <= VIRTIO_END; entry += VIRTIO_STRIDE) { // maps virtio
+    if (map_page(kernel_L0_kva, PA_TO_KVA(entry), entry, device_mem)) {
+      return -1;
+    }
+  }
+
   for (pa_t entry = (pa_t) GICD ; entry < (pa_t) (GICC + 0x10000) ; entry += 0x1000) { // maps gic controller
     if (map_page(kernel_L0_kva, PA_TO_KVA(entry), entry, device_mem)) {
       return -1;

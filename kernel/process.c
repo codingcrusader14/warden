@@ -84,6 +84,20 @@ task_t *task_alloc(uint64 ticket_level) {
   return new_task;
 }
 
+task_t *kernel_task_create(void (*entry)(void*), void* args, uint64 ticket_level) {
+  task_t *new_task = task_alloc(ticket_level);
+  uint64 sp_top = ((uint64)new_task->kstack + STACK_SIZE) & ~0xF;
+  memset(&new_task->ctx, 0, sizeof(context));
+  new_task->ctx.x30 = (uint64)task_trampoline;
+  new_task->ctx.x19 = (uint64)entry;
+  new_task->ctx.x20 = (uint64)args;
+  new_task->ctx.sp = sp_top;
+  new_task->pgd = NULL;
+  new_task->ustack = NULL;
+  new_task->entry_point = NULL;
+  return new_task;
+}
+
 task_t *task_create(void (*entry)(void *), void *args, uint64 ticket_level) {
   task_t *new_task = task_alloc(ticket_level);
   uint64 sp_top = ((uint64)new_task->kstack + STACK_SIZE) & ~0xF;
