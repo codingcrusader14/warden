@@ -1,6 +1,8 @@
 #include "syscall.h"
 #include "../drivers/qemu/pl011.h"
+#include "../fs/vfs.h"
 #include "libk/includes/stdio.h"
+#include "libk/includes/string.h"
 #include "mmu_defs.h"
 #include "process.h"
 #include "schedule.h"
@@ -207,4 +209,21 @@ int handle_pipe(int p[]) {
    }
 
   return 0;
+}
+
+int handle_open(const char* path, int flags) {
+  if (!path) return -1;
+  
+  size_t path_len = strlen(path);
+  char buf[path_len + 1];
+ 
+  buf[path_len] = '\0';
+  file* fdata = vfs_file_open(buf, flags);
+  if (!fdata)
+    return -1;
+
+  int fd = find_free_fd(current_task, fdata);
+  if (fd < 0) 
+    return -1;
+  return fd;
 }

@@ -5,6 +5,8 @@
 #include "../drivers/qemu/gic.h"
 #include "libk/includes/stdio.h"
 #include "libk/includes/stdlib.h"
+#include "libk/includes/string.h"
+#include "mmu_defs.h"
 #include "syscall.h"
 #include "vmm.h"
 #include "pmm.h"
@@ -13,16 +15,10 @@
 #include "../user/user_syscall.h"
 #include "console.h"
 #include "../drivers/virtio.h"
+#include "../fs/fat32.h"
 
 void idle(void* args) {
     (void)args;
-    kprintf("idle: about to read disk\n");
-    char *buf = kmalloc(512);
-    kprintf("idle: buf allocated at %p\n", buf);
-    int ret = virtio_disk_rw(buf, 0, 0);
-    kprintf("virtio read status: %d\n", ret);
-    kprintf("first bytes: %x %x %x\n", (uint8)buf[0], (uint8)buf[1], (uint8)buf[2]);
-    kfree(buf);
     while (1) {}
 }
 
@@ -33,6 +29,7 @@ void kernel_main(void) {
     gic_init();
     timer_init();
     virtio_disk_init();
+    init_disk_bpb();
     scheduler_init();
     task_t* b = kernel_task_create(idle, NULL, NORMAL_TASK);
     task_t* a = task_create((void (*)(void*))user_entry,NULL, NORMAL_TASK);

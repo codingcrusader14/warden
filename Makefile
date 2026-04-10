@@ -5,6 +5,7 @@ QEMU = qemu-system-aarch64
 
 KERNEL_SRC = kernel
 DRIVERS_SRC = drivers
+FS_SRC = fs
 USER_SRC = user
 BUILD_DIR := build
 SYSROOT := sysroot
@@ -15,6 +16,8 @@ DRIVERS_C := $(shell find $(DRIVERS_SRC) -type f -name '*.c')
 DRIVERS_S := $(shell find $(DRIVERS_SRC) -type f -name '*.S')
 USER_C := $(shell find $(USER_SRC) -type f -name '*.c')
 USER_S := $(shell find $(USER_SRC) -type f -name '*.S')
+FS_C := $(shell find $(FS_SRC) -type f -name '*.c')
+FS_S := $(shell find $(FS_SRC) -type f -name '*.S')
 
 KERNEL_OBJ := $(patsubst $(KERNEL_SRC)/%.c, $(BUILD_DIR)/kernel/%.o, $(KERNEL_C))
 KERNEL_OBJ += $(patsubst $(KERNEL_SRC)/%.S, $(BUILD_DIR)/kernel/%.o, $(KERNEL_S))
@@ -22,11 +25,13 @@ DRIVERS_OBJ := $(patsubst $(DRIVERS_SRC)/%.c, $(BUILD_DIR)/drivers/%.o, $(DRIVER
 DRIVERS_OBJ += $(patsubst $(DRIVERS_SRC)/%.S, $(BUILD_DIR)/drivers/%.o, $(DRIVERS_S))
 USER_OBJ := $(patsubst $(USER_SRC)/%.c, $(BUILD_DIR)/user/%.o, $(USER_C))
 USER_OBJ += $(patsubst $(USER_SRC)/%.S, $(BUILD_DIR)/user/%.o, $(USER_S))
+FS_OBJ := $(patsubst $(FS_SRC)/%.c, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_C)) 
+FS_OBJ += $(patsubst $(FS_SRC)/%.S, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_S)) 
 
-ALL_KERNEL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ)
+ALL_KERNEL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ) $(FS_OBJ)
 
-CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I kernel/libk/includes -mgeneral-regs-only  -MMD -MP
-USER_CFLAGS := -Wall -Wextra -Werror -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user
+CFLAGS := -Wall -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I $(FS_SRC) -I kernel/libk/includes -mgeneral-regs-only  -MMD -MP
+USER_CFLAGS := -Wall -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 USER_LDFLAGS := -T $(USER_SRC)/user.ld -nostdlib
@@ -59,15 +64,15 @@ $(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S
+	@mkdir -p $(dir $@)
+	$(CC) $(ASFLAGS) -g -c $< -o $@
+
 $(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/kernel/%.o: $(KERNEL_SRC)/%.S
-	@mkdir -p $(dir $@)
-	$(CC) $(ASFLAGS) -g -c $< -o $@
-
-$(BUILD_DIR)/drivers/%.o: $(DRIVERS_SRC)/%.S
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) -g -c $< -o $@
 
@@ -79,6 +84,14 @@ $(BUILD_DIR)/user/%.o: $(USER_SRC)/%.S
 	@mkdir -p $(dir $@)
 	$(CC) $(ASFLAGS) -g -c $< -o $@
 
+$(BUILD_DIR)/$(FS_SRC)/%.o: $(FS_SRC)/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/$(FS_SRC)/%.o: $(FS_SRC)/%.S
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -g -c $< -o $@
+
 $(BUILD_DIR)/kernel/user_init.o: init.bin
 
 -include $(ALL_KERNEL_OBJ:.o=.d)
@@ -88,7 +101,7 @@ install-headers: | $(SYSROOT)/usr/include
 
 disk.img:
 	dd if=/dev/zero of=disk.img bs=1M count=256
-	mkfs.fat -F 32 disk.img
+	mkfs.fat -F 32 -s 8 disk.img
 
 qemu: kernel.elf disk.img
 	$(QEMU) $(QEMUFLAGS) -kernel $(SYSROOT)/boot/kernel.elf -drive file=disk.img,if=none,format=raw,id=hd0 -device virtio-blk-device,drive=hd0,

@@ -7,6 +7,7 @@
 #define GLOBAL_FILE_CAP 64
 
 enum file_types {
+  FILE_INODE,
   FILE_CONSOLE,
   FILE_PIPE_READ,
   FILE_PIPE_WRITE,

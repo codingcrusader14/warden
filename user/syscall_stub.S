@@ -18,3 +18,4 @@ SYSCALL sys_wait,   6
 SYSCALL sys_sbrk,   7
 SYSCALL sys_close,  8
 SYSCALL sys_pipe,   9
+SYSCALL sys_open,   10
