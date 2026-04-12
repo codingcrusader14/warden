@@ -214,10 +214,14 @@ int handle_pipe(int p[]) {
 int handle_open(const char* path, int flags) {
   if (!path) return -1;
   
-  size_t path_len = strlen(path);
-  char buf[path_len + 1];
- 
-  buf[path_len] = '\0';
+  char buf[MAX_PATH];
+  pte_t* kva_pgd = (pte_t*)PA_TO_KVA(current_task->pgd);
+
+  int len = copy_from_user(kva_pgd, path, buf, MAX_PATH);
+  if (len < 0) 
+    return -1;
+
+  buf[MAX_PATH - 1] = '\0';
   file* fdata = vfs_file_open(buf, flags);
   if (!fdata)
     return -1;
@@ -225,5 +229,6 @@ int handle_open(const char* path, int flags) {
   int fd = find_free_fd(current_task, fdata);
   if (fd < 0) 
     return -1;
+
   return fd;
 }

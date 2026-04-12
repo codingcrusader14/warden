@@ -77,6 +77,13 @@ void kernelvec_sync(struct trapframe *tf) {
       break;
     }
 
+    case SYS_OPEN: {
+      char* path = (char*)tf->x0;
+      int flags = (int)tf->x1;
+      tf->x0 = handle_open(path, flags);
+      break;
+    }
+
     default: {
       kprintf("Syscall does not exist\n");
       break;

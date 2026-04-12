@@ -3,6 +3,7 @@
 #include "../kernel/file.h"
 #include "../kernel/libk/includes/string.h"
 #include "../kernel/libk/includes/stdlib.h"
+#include "../kernel/libk/includes/stdio.h"
 
 int64 vfs_file_read(file* f, void* buf, size_t size) {
   if (!f || !buf) return -1;
@@ -38,8 +39,10 @@ static file_ops vfs_fops = {
 
 file* vfs_file_open(const char* path, int flags) {
   fat32_dir_entry found_entry; 
-  if (path_lookup(path, &found_entry) != 0)
+  if (path_lookup(path, &found_entry) != 0) {
+    kprintf("path not found\n");
     return NULL;
+  }
 
   vfs_inode* inode = kmalloc(sizeof(vfs_inode));
   if (!inode) 

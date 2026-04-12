@@ -6,6 +6,7 @@
 #include "libk/includes/stdio.h"
 #include "libk/includes/stdlib.h"
 #include "libk/includes/string.h"
+#include "../fs/vfs.h"
 #include "mmu_defs.h"
 #include "syscall.h"
 #include "vmm.h"
@@ -17,8 +18,30 @@
 #include "../drivers/virtio.h"
 #include "../fs/fat32.h"
 
+extern uint32 root_cluster;
+
 void idle(void* args) {
     (void)args;
+    fat32_dir_entry new_file;
+    fat32_create(root_cluster, "delete.txt", &new_file);
+    fat32_write(&new_file, "this will be deleted", 0, 20);
+    update_directory(root_cluster, &new_file);
+
+    // verify it exists
+    fat32_dir_entry found;
+    if (path_lookup("/delete.txt", &found) == 0) {
+        kprintf("before unlink: found delete.txt size=%d\n", found.size);
+    }
+
+    fat32_unlink(root_cluster, "delete.txt");
+
+    // verify it's gone
+    if (path_lookup("/delete.txt", &found) == 0) {
+        kprintf("ERROR: file still exists after unlink\n");
+    } else {
+        kprintf("unlink successful: delete.txt is gone\n");
+    }
+
     while (1) {}
 }
 

@@ -8,6 +8,17 @@
 #define FAT32_MASK 0x0FFFFFFF
 #define MAX_PATH 64
 
+#define FREE_CLUSTER_ENTRY 0x00000000
+#define EOC 0x0FFFFFFF
+#define DELETED_CLUSTER 0xE5
+#define EMPTY_CLUSTER 0x00
+#define DIRECTORY 0x10
+
+#define SELF   ".          "
+#define PARENT "..         "
+
+extern uint32 root_cluster;
+
 enum type {
   ExFAT,
   FAT12,
@@ -67,6 +78,11 @@ int read_directory(uint32 start_cluster, fat32_dir_entry* entries, uint32 max_en
 int dir_lookup(uint32 dir_cluster, const char* name, fat32_dir_entry* result);
 int path_lookup(const char* path, fat32_dir_entry* result);
 int fat32_read(fat32_dir_entry* entry, void* buf, uint32 offset, uint32 size);
+int fat32_write(fat32_dir_entry* entry, const void* buf, size_t offset, size_t size);
+int fat32_create(uint32 dir_cluster, const char* name, fat32_dir_entry* res);
+int update_directory(uint32 dir_cluster, fat32_dir_entry* updated);
+int fat32_mkdir(uint32 dir_cluster, const char* name);
+int fat32_unlink(uint32 dir_cluster, const char* name);
 void print_metadata();
 
 

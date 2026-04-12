@@ -7,5 +7,6 @@ void _start() {
 
   int bytes_read = sys_read(fd, buffer, 512);
   sys_write(1, buffer, bytes_read);
+  sys_close(fd);
   sys_exit(0);
 }

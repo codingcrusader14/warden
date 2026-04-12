@@ -1,7 +1,9 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdalign.h>
 #include "libk/includes/stdio.h"
 #include "libk/includes/string.h"
+#include "types.h"
 #include "vmm.h"
 #include "pmm.h"
 #include "mmu_defs.h"
@@ -229,6 +231,59 @@ int copy_to_user(pte_t* user_pt, void* dst, const void* src, size_t len) {
   }
 
   memcpy(dst, src, len);
+  return 0;
+}
+
+int strncpy_from_user(pte_t* current_pt, const char* user_str, char* kernel_buf, size_t max) {
+  size_t copied = 0;
+  uintptr_t addr = (uintptr_t)user_str;
+
+  while (copied < max) {
+    size_t page_remaining = PAGE_SIZE - (addr & PAGE_BITS);
+    size_t chunk = (page_remaining < (max - copied)) ? page_remaining : (max - copied);
+
+    if (copy_from_user(current_pt, (const void*)addr, kernel_buf + copied, chunk) != 0) {
+      return -1;
+    }
+
+    for (size_t i = 0; i< chunk; ++i) { // check for null terminator
+      if (kernel_buf[copied + i] == '\0') 
+        return copied + i;
+    }
+
+    copied += chunk;
+    addr += chunk;
+  }
+
+  kernel_buf[max - 1] = '\0';
+  return max - 1;
+}
+
+int copy_from_user(pte_t* current_pt,const void* user_buf, void* kernel_buf, size_t len) {
+  uintptr_t addr = (uintptr_t) user_buf;
+  uintptr_t end = addr + len;
+  uint64 copied = 0;
+  if (end < addr) return -1;
+  if (addr >= KERNEL_HIGH_VA_ADDRESS) return -1;
+
+  while (copied < len) {
+    pte_t* pte = walk(current_pt, addr);
+    if (!pte) return -1;
+
+    pa_t physical_address = (*pte & TABLE_ADDR_MASK) + (addr & PAGE_BITS);
+
+    va_t kvirtual_address = PA_TO_KVA(physical_address);
+
+    uint64 page_remaining = PAGE_SIZE - (addr & PAGE_BITS);
+
+    uint64 chunk = (page_remaining < (len - copied)) ? page_remaining : (len - copied);
+
+    memcpy(kernel_buf + copied, (const void*) kvirtual_address, chunk);
+    
+    copied += chunk;
+    addr += chunk;
+  }
+
   return 0;
 }
 

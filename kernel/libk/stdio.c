@@ -85,6 +85,31 @@ int kprintf(const char *format, ...) {
             send_message(hex_buffer);
             break;
           }
+          case 'l': {
+            if (*(format + 1) == 'x') {
+              format++;
+              uint64 num = va_arg(ap, uint64);
+              char hex_buffer[17];
+              if (num == 0) {
+                put_char('0');
+                break;
+              }
+
+              int i = 0;
+              while (num) {
+                int hex = num % 16;
+                hex_buffer[i++] = hex_values[hex];
+                num /= 16;
+              }
+
+              hex_buffer[i] = '\0';
+              int buffer_len = i - 1;
+              reverse_buffer(hex_buffer, buffer_len, 0);
+              send_message(hex_buffer);
+            }
+            break;
+          }
+          
           case 'p': { // pointer
             void* p = va_arg(ap, void*);
             uintptr_t ptr_val = (uintptr_t)p; 
