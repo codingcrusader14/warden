@@ -14,8 +14,8 @@ KERNEL_C := $(shell find $(KERNEL_SRC) -type f -name '*.c')
 KERNEL_S := $(shell find $(KERNEL_SRC) -type f -name '*.S')
 DRIVERS_C := $(shell find $(DRIVERS_SRC) -type f -name '*.c')
 DRIVERS_S := $(shell find $(DRIVERS_SRC) -type f -name '*.S')
-USER_C := $(shell find $(USER_SRC) -type f -name '*.c')
-USER_S := $(shell find $(USER_SRC) -type f -name '*.S')
+USER_C := $(USER_SRC)/init.c
+USER_S := $(USER_SRC)/syscall_stub.S
 FS_C := $(shell find $(FS_SRC) -type f -name '*.c')
 FS_S := $(shell find $(FS_SRC) -type f -name '*.S')
 
@@ -25,18 +25,17 @@ DRIVERS_OBJ := $(patsubst $(DRIVERS_SRC)/%.c, $(BUILD_DIR)/drivers/%.o, $(DRIVER
 DRIVERS_OBJ += $(patsubst $(DRIVERS_SRC)/%.S, $(BUILD_DIR)/drivers/%.o, $(DRIVERS_S))
 USER_OBJ := $(patsubst $(USER_SRC)/%.c, $(BUILD_DIR)/user/%.o, $(USER_C))
 USER_OBJ += $(patsubst $(USER_SRC)/%.S, $(BUILD_DIR)/user/%.o, $(USER_S))
-FS_OBJ := $(patsubst $(FS_SRC)/%.c, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_C)) 
-FS_OBJ += $(patsubst $(FS_SRC)/%.S, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_S)) 
+FS_OBJ := $(patsubst $(FS_SRC)/%.c, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_C))
+FS_OBJ += $(patsubst $(FS_SRC)/%.S, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_S))
 
 ALL_KERNEL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ) $(FS_OBJ)
 
-CFLAGS := -Wall -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I $(FS_SRC) -I kernel/libk/includes -mgeneral-regs-only  -MMD -MP
-USER_CFLAGS := -Wall -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user
+CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I $(FS_SRC) -I kernel/libk/includes -mgeneral-regs-only -MMD -MP
+USER_CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 USER_LDFLAGS := -T $(USER_SRC)/user.ld -nostdlib
 QEMUFLAGS := -M virt -m 512M -cpu cortex-a57 -nographic
-
 
 $(BUILD_DIR) $(BUILD_DIR)/kernel $(BUILD_DIR)/drivers:
 	mkdir -p $@
@@ -55,7 +54,7 @@ init.elf: $(USER_OBJ) | $(BUILD_DIR)/user
 init.bin: init.elf
 	aarch64-elf-objcopy -O binary $(BUILD_DIR)/user/init.elf $(BUILD_DIR)/user/init.bin
 
-all: init.bin kernel.elf 
+all: init.bin kernel.elf
 
 install: kernel.elf
 	@echo "=== Kernel installed to $(SYSROOT)/boot/ ==="
@@ -96,6 +95,16 @@ $(BUILD_DIR)/kernel/user_init.o: init.bin
 
 -include $(ALL_KERNEL_OBJ:.o=.d)
 
+USER_PROGRAMS := hello
+
+$(BUILD_DIR)/user/%.elf: $(USER_SRC)/%.c $(BUILD_DIR)/user/syscall_stub.o
+	@mkdir -p $(dir $@)
+	$(CC) $(USER_CFLAGS) -c $< -o $(BUILD_DIR)/user/$*.o
+	$(LD) $(USER_LDFLAGS) -o $@ $(BUILD_DIR)/user/$*.o $(BUILD_DIR)/user/syscall_stub.o
+
+install-user: $(patsubst %, $(BUILD_DIR)/user/%.elf, $(USER_PROGRAMS))
+	for f in $^; do mcopy -i disk.img -D o $$f ::$$(basename $$f); done
+
 install-headers: | $(SYSROOT)/usr/include
 	@echo "=== No headers to install yet ==="
 
@@ -118,4 +127,3 @@ clean:
 	rm -rf $(BUILD_DIR) kernel.elf
 
 .PHONY: all clean qemu qemu-lldb
-

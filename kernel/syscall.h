@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include "types.h"
+#include "file.h"
 
 /* System call numbers correspond to system calls that are handled in trap.c (trap handler) */
 #define SYS_EXIT   0
@@ -16,6 +17,9 @@
 #define SYS_CLOSE  8
 #define SYS_PIPE   9
 #define SYS_OPEN   10
+#define SYS_MKDIR  11
+#define SYS_UNLINK 12
+#define SYS_EXEC   13
 
 
 int handle_sys_exit(int status);
@@ -29,5 +33,8 @@ void* handle_sbrk(int incr);
 int handle_close(int fd);
 int handle_pipe(int p[]);
 int handle_open(const char* path, int flags);
+int handle_mkdir(const char* path); // create a new directory
+int handle_unlink(const char* path); // remove a file
+int handle_exec(const char* path); // loads a new file and executes with arguments
 
 #endif 

@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include "../drivers/qemu/timer.h"
+#include "console.h"
 #include "libk/includes/stdio.h"
 #include "schedule.h"
 #include "process.h"
@@ -17,6 +18,14 @@ static scheduler_t scheduler; // Fair Share Stride Scheduler - Only contains rea
 zombie_t cleanup; // Dead tasks for cleanup 
 static uint64 global_tickets, global_stride, global_pass;
 task_t* current_task = NULL;
+
+void idle(void* args) {
+    (void)args;
+    while (1) {
+      cleanup_dead_task();
+      yield();
+    }
+}
 
 void cleanup_dead_task() {
   for (size_t i = 0; i < cleanup.size; ++i) {
@@ -98,6 +107,23 @@ void scheduler_pop() {
     scheduler.processes[size - 1] = NULL;
     scheduler.size--;
   }
+}
+
+void scheduler_boot() {
+  task_t* idle_task = kernel_task_create(idle, NULL, NORMAL_TASK);
+  task_t* init_task = task_create((void (*)(void*))user_entry,NULL, NORMAL_TASK);
+  file *f_stdin = file_alloc(FILE_CONSOLE, &console_ops, NULL);
+  file *f_stdout = file_alloc(FILE_CONSOLE, &console_ops, NULL);
+  file *f_stderr = file_alloc(FILE_CONSOLE, &console_ops, NULL);
+  if (!f_stdin || !f_stdout || !f_stderr) {
+    kprintf("Error: file descriptors failed to allocate\n");
+    return;
+  }
+  init_task->fd_table[0] = f_stdin;
+  init_task->fd_table[1] = f_stdout;
+  init_task->fd_table[2] = f_stderr;
+  scheduler_add(idle_task);
+  scheduler_add(init_task);
 }
 
 void scheduler_init() {

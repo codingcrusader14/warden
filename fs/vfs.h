@@ -13,6 +13,7 @@ file* vfs_file_open(const char* path, int flags);
 typedef struct {
   fat32_dir_entry entry;
   uint32 start_cluster;
+  uint32 parent_cluster;
   uint32 ref_count;
 } vfs_inode;
 

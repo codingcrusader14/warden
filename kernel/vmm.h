@@ -17,6 +17,8 @@ int copy_to_user(pte_t* user_pt, void* dst, const void* src, size_t len);
 int copy_from_user(pte_t* current_pt,const void* user_buf, void* kernel_buf, size_t len);
 int strncpy_from_user(pte_t* current_pt, const char* user_str, char* kernel_buf, size_t max);
 int copy_user_pagetable(pte_t* parent_pgd, pte_t* child_pgd);
+void free_user_pages(pte_t* pgd);
+void flush_tlb();
 
 
 #endif 

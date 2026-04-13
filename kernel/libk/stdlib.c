@@ -61,14 +61,16 @@ void *kmalloc(size_t size) {
     prev = current;
     current = current->next;
   }
-  pa_t* new_page = pmm_alloc(); // if there are no pages suitable try allocating for a new page, still havent fixed issue with size >= 4080
-  if (!new_page) { // page allocation failed, or no physical pages left
-      return NULL;
-    }
-  block_header_t *new_header = (block_header_t *)PA_TO_KVA(new_page);
-  new_header->size = (PAGE_SIZE - sizeof(block_header_t));
+
+  uint32 needed = size + sizeof(block_header_t);
+  uint32 num_pages = (needed + PAGE_SIZE - 1) / PAGE_SIZE;
+  pa_t* pages = pmm_alloc_pages(num_pages);
+  if (!pages) return NULL;
+
+  block_header_t *new_header = (block_header_t *)PA_TO_KVA(pages);
+  new_header->size = ((num_pages * PAGE_SIZE) - sizeof(block_header_t));
   new_header->free = true;
-  new_header->next = NULL;
+  new_header->next = head;
   head = new_header;
   return kmalloc(size);
 }
@@ -78,8 +80,7 @@ void kfree(void *ptr) {
     return;
   }
 
-  block_header_t *memory_block =
-      (block_header_t *)((uint8 *)ptr - sizeof(block_header_t));
+  block_header_t *memory_block = (block_header_t *)((uint8 *)ptr - sizeof(block_header_t));
   memory_block->free = true;
   bool inserted = false;
 
@@ -91,10 +92,7 @@ void kfree(void *ptr) {
 
   block_header_t *current = head;
   while (current && !inserted) {
-    if (memory_block > current &&
-        (current->next == NULL ||
-         memory_block < current->next)) { // check if memory is greater than
-                                          // current and less than current->next
+    if (memory_block > current &&  (current->next == NULL || memory_block < current->next)) { // check if memory is greater than current and less than current->next
       block_header_t *temp = current->next;
       current->next = memory_block;
       memory_block->next = temp;
@@ -103,45 +101,24 @@ void kfree(void *ptr) {
     current = current->next;
   }
 
-  block_header_t *forward_block =
-      (block_header_t *)((uint8 *)memory_block + sizeof(block_header_t) +
-                         memory_block->size);
+  block_header_t *forward_block = (block_header_t *)((uint8 *)memory_block + sizeof(block_header_t) + memory_block->size);
   while (memory_block->next) { // forward coalescing
     if (forward_block != memory_block->next) {
       break;
     }
 
-    if (((uintptr_t)(memory_block) & ~(PAGE_SIZE - 1)) !=
-        ((uintptr_t)(forward_block) &
-         ~(PAGE_SIZE - 1))) { // check if blocks are on same page
-      break;
-    }
-
-    uint32 new_size =
-        memory_block->size + sizeof(block_header_t) + memory_block->next->size;
+    uint32 new_size = memory_block->size + sizeof(block_header_t) + memory_block->next->size;
     memory_block->next = memory_block->next->next;
     memory_block->size = new_size;
-    forward_block =
-        (block_header_t *)((uint8 *)memory_block + sizeof(block_header_t) +
-                           memory_block->size);
+    forward_block = (block_header_t *)((uint8 *)memory_block + sizeof(block_header_t) + memory_block->size);
   }
 
-  if (inserted) { // if block is head no need to backward coalesce
-    return;
-  }
+  if (inserted) return; // if block is head no need to backward coalesce return
 
-  block_header_t *backward_block =
-      (block_header_t *)((uint8 *)current +
-                         (sizeof(block_header_t) + current->size));
-  if (((uintptr_t)(memory_block) & ~(PAGE_SIZE - 1)) !=
-      ((uintptr_t)(current) &
-       ~(PAGE_SIZE - 1))) { // check if blocks are on same page
-    return;
-  }
+  block_header_t *backward_block = (block_header_t *)((uint8 *)current + (sizeof(block_header_t) + current->size));
 
   if (backward_block == memory_block) { // merge backward
-    uint32 new_size =
-        current->size + sizeof(block_header_t) + memory_block->size;
+    uint32 new_size = current->size + sizeof(block_header_t) + memory_block->size;
     current->size = new_size;
     current->next = memory_block->next;
   }

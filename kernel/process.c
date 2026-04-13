@@ -130,6 +130,11 @@ task_t *task_create(void (*entry)(void *), void *args, uint64 ticket_level) {
 }
 
 void task_free(task_t *t) {
+  if (t->pgd) {
+    pte_t* kva_pgd = (pte_t*)PA_TO_KVA(t->pgd);
+    free_user_pages(kva_pgd); 
+    pmm_free((pa_t*)t->pgd); // free page table
+  }
   kfree(t->kstack);
   kfree(t);
 }

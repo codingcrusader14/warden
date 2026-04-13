@@ -12,6 +12,12 @@ extern void tlb_invalidate(va_t virtual_address);
 
 pte_t* kernel_L0;
 
+void flush_tlb() {
+  asm volatile("tlbi vmalle1is");
+  asm volatile("dsb ish");
+  asm volatile("isb");
+}
+
 void set_ttbr1_addr(uint64 addr) {
   asm volatile("msr ttbr1_el1, %0" :: "r"(addr));
   asm volatile("tlbi vmalle1is");
@@ -325,4 +331,37 @@ int copy_user_pagetable(pte_t* parent_pgd, pte_t* child_pgd) {
     }
   }
   return 0;
+}
+
+void free_user_pages(pte_t* pgd) {
+  pte_t pt_rows = (PAGE_SIZE / PTE_SIZE);
+
+  for (va_t l0_index = 0; l0_index < pt_rows; ++l0_index) {
+    if (!(pgd[l0_index] & VALID)) continue;
+    pte_t* l0_table = (pte_t*)PA_TO_KVA(pgd[l0_index] & TABLE_ADDR_MASK);
+
+    for (va_t l1_index = 0; l1_index < pt_rows; ++l1_index) {
+      if (!(l0_table[l1_index] & VALID)) continue;
+      pte_t* l1_table = (pte_t*)PA_TO_KVA(l0_table[l1_index] & TABLE_ADDR_MASK);
+
+      for (va_t l2_index = 0; l2_index < pt_rows; ++l2_index) {
+        if (!(l1_table[l2_index] & VALID)) continue;
+        pte_t* l2_table = (pte_t*)PA_TO_KVA(l1_table[l2_index] & TABLE_ADDR_MASK);
+
+        for (va_t l3_index = 0; l3_index < pt_rows; ++l3_index) {
+          if (!(l2_table[l3_index] & VALID)) continue;
+
+          pa_t page = (pa_t)(l2_table[l3_index] & TABLE_ADDR_MASK);
+          pmm_free((pa_t*)page);
+          l2_table[l3_index] = 0;
+        }
+        pmm_free((pa_t*)KVA_TO_PA(l2_table));
+        l1_table[l2_index] = 0;
+      }
+      pmm_free((pa_t*)KVA_TO_PA(l1_table));
+      l0_table[l1_index] = 0;
+    }
+    pmm_free((pa_t*)KVA_TO_PA(l0_table));
+    pgd[l0_index] = 0;
+  }
 }

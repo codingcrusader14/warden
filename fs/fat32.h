@@ -76,13 +76,14 @@ typedef struct {
 fat32_bpb* init_disk_bpb();
 int read_directory(uint32 start_cluster, fat32_dir_entry* entries, uint32 max_entries);
 int dir_lookup(uint32 dir_cluster, const char* name, fat32_dir_entry* result);
-int path_lookup(const char* path, fat32_dir_entry* result);
+int path_lookup(const char* path, fat32_dir_entry* result, uint32* parent_cluster);
 int fat32_read(fat32_dir_entry* entry, void* buf, uint32 offset, uint32 size);
 int fat32_write(fat32_dir_entry* entry, const void* buf, size_t offset, size_t size);
 int fat32_create(uint32 dir_cluster, const char* name, fat32_dir_entry* res);
 int update_directory(uint32 dir_cluster, fat32_dir_entry* updated);
 int fat32_mkdir(uint32 dir_cluster, const char* name);
 int fat32_unlink(uint32 dir_cluster, const char* name);
+int fat32_rmdir(uint32 dir_cluster, const char* dname);
 void print_metadata();
 
 

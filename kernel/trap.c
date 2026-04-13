@@ -84,6 +84,24 @@ void kernelvec_sync(struct trapframe *tf) {
       break;
     }
 
+    case SYS_MKDIR: {
+      const char* path = (const char*)tf->x0;
+      tf->x0 = handle_mkdir(path);
+      break;
+    }
+
+    case SYS_UNLINK: {
+      const char* path = (const char*)tf->x0;
+      tf->x0 = handle_unlink(path);
+      break;
+    }
+
+    case SYS_EXEC: {
+      const char* path = (const char*)tf->x0;
+      tf->x0 = handle_exec(path);
+      break;
+    }
+
     default: {
       kprintf("Syscall does not exist\n");
       break;

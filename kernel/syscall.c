@@ -1,8 +1,10 @@
 #include "syscall.h"
 #include "../drivers/qemu/pl011.h"
 #include "../fs/vfs.h"
+#include "elf.h"
 #include "libk/includes/stdio.h"
 #include "libk/includes/string.h"
+#include "libk/includes/stdlib.h"
 #include "mmu_defs.h"
 #include "process.h"
 #include "schedule.h"
@@ -13,6 +15,8 @@
 #include "pipe.h"
 #include "pmm.h"
 #include "wait_queue.h"
+#include "../fs/fat32.h"
+#include "../fs/vfs.h"
 
 extern void fork_return();
 
@@ -95,6 +99,46 @@ pid_t handle_fork() {
   scheduler_add(child);
 
   return child->pid;
+}
+
+int handle_exec(const char* path) { // replace current proccess image with a new one
+  if (!path) return -1;
+
+  char buf[MAX_PATH];
+  pte_t* kva_pgd = (pte_t*)PA_TO_KVA(current_task->pgd);
+  if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0)
+    return -1;
+
+  fat32_dir_entry entry;
+  if (path_lookup(buf, &entry, NULL) != 0) {
+    return -1;
+  }
+
+  uint8* elf_buf = kmalloc(entry.size); 
+  if (!elf_buf) {
+    kprintf("kmalloc failed\n");
+    return -1;
+  }
+
+
+  fat32_read(&entry, elf_buf, 0, entry.size);
+
+  free_user_pages(kva_pgd);
+
+  uint64 entry_point = parse_and_map_elf(elf_buf, entry.size, current_task);
+  kfree(elf_buf);
+  if (!entry_point) return -1; 
+
+  pa_t stack = (pa_t)pmm_alloc();
+  map_page(kva_pgd, USER_STACK - PAGE_SIZE, stack, USER_FLAGS);
+
+  flush_tlb();
+  current_task->tf->elr_el1 = entry_point;
+  current_task->tf->sp_el0 = USER_STACK;
+
+  memset(&current_task->tf->x0, 0, 31 * sizeof(uint64));
+
+  return 0; // exec failed
 }
 
 pid_t handle_wait(int* status) {
@@ -232,3 +276,72 @@ int handle_open(const char* path, int flags) {
 
   return fd;
 }
+ 
+int handle_mkdir(const char* path) {
+  if (!path) return -1;
+
+  char buf[MAX_PATH];
+  pte_t* kva_pgd = (pte_t*) PA_TO_KVA(current_task->pgd);
+  if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0) 
+    return -1;
+
+  char* last_slash = NULL;
+  for (size_t i = 0; buf[i] != '\0'; ++i) {
+    if (buf[i] == '/') {
+      last_slash = &buf[i];
+    }
+  }
+  uint32 parent_cluster;
+  char* dir_name;
+
+  if (!last_slash || last_slash == buf) {     // parent is root
+    parent_cluster = root_cluster;
+    dir_name = (last_slash == buf) ? buf + 1 : buf;
+  }
+  else {
+    *last_slash = '\0';
+    dir_name = last_slash + 1;
+    fat32_dir_entry parent;
+    if (path_lookup(buf, &parent, NULL) != 0) {
+      return -1;
+    }
+    parent_cluster = (parent.high_entry_first_cluster << 16) | parent.low_entry_first_cluster;
+  }
+
+  return fat32_mkdir(parent_cluster, dir_name);
+}
+
+int handle_unlink(const char* path) {
+  if (!path) return -1;
+
+  char buf[MAX_PATH];
+  pte_t* kva_pgd = (pte_t*) PA_TO_KVA(current_task->pgd);
+  if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0) 
+    return -1;
+
+  char* last_slash = NULL;
+  for (size_t i = 0; buf[i] != '\0'; ++i) {
+    if (buf[i] == '/') {
+      last_slash = &buf[i];
+    }
+  }
+  uint32 parent_cluster;
+  char* dir_name;
+
+  if (!last_slash || last_slash == buf) {     // parent is root
+    parent_cluster = root_cluster;
+    dir_name = (last_slash == buf) ? buf + 1 : buf;
+  }
+  else {
+    *last_slash = '\0';
+    dir_name = last_slash + 1;
+    fat32_dir_entry parent;
+    if (path_lookup(buf, &parent, NULL) != 0) {
+      return -1;
+    }
+    parent_cluster = (parent.high_entry_first_cluster << 16) | parent.low_entry_first_cluster;
+  }
+
+  return fat32_unlink(parent_cluster, dir_name);
+}
+

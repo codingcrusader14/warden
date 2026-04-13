@@ -299,7 +299,7 @@ int dir_lookup(uint32 dir_cluster, const char* name, fat32_dir_entry* result) {
   return -1;
 }
 
-int path_lookup(const char* path, fat32_dir_entry* result) {
+int path_lookup(const char* path, fat32_dir_entry* result, uint32* parent_cluster) {
   uint32 starting_cluster = root_cluster;
   char sub_dir[MAX_PATH];
   int i = 0, j = 0;
@@ -320,6 +320,9 @@ int path_lookup(const char* path, fat32_dir_entry* result) {
     if (path[i] == '/' ) {
       i++;
     }
+
+    if (parent_cluster) 
+      *parent_cluster = starting_cluster;
 
     if (dir_lookup(starting_cluster, sub_dir, result) != 0) 
       return -1;
@@ -415,7 +418,7 @@ int fat32_write(fat32_dir_entry* entry, const void* buf, size_t offset, size_t s
       if (bytes_written >= size) {
         return bytes_written;
       }
-      uint32 new_cluster = alloc_cluster();
+      int32 new_cluster = alloc_cluster();
       if (new_cluster == -1) 
         return bytes_written;
       fat_set_entry(current_cluster, new_cluster);
@@ -434,7 +437,7 @@ int fat32_write(fat32_dir_entry* entry, const void* buf, size_t offset, size_t s
 
 // create a new file within directory
 int fat32_create(uint32 dir_cluster, const char* name, fat32_dir_entry* res) { 
-  uint32 free_cluster = alloc_cluster(); // find a free cluster 
+  int32 free_cluster = alloc_cluster(); // find a free cluster 
   if (free_cluster == -1)  // no cluster available
     return -1;
   uint32 entries_per_cluster = cluster_size / 32;
@@ -474,7 +477,7 @@ int fat32_create(uint32 dir_cluster, const char* name, fat32_dir_entry* res) {
 
 // create a new subdirectoy with . (self) and .. (parent)
 int fat32_mkdir(uint32 dir_cluster, const char* name) {
-  uint32 free_cluster = alloc_cluster(); // find a free cluster 
+  int32 free_cluster = alloc_cluster(); // find a free cluster 
   if (free_cluster == -1)  // no cluster available
     return -1;
   uint32 entries_per_cluster = cluster_size / 32;
@@ -567,6 +570,66 @@ int fat32_unlink(uint32 dir_cluster, const char* name) {
       break;
     current_cluster = next_cluster;
   } 
+  return -1;
+}
+
+int fat32_rmdir(uint32 dir_cluster, const char* dname) {
+  uint32 current_cluster = dir_cluster;
+  uint32 entries_per_cluster = cluster_size / 32;
+  uint8 cluster_buffer[cluster_size];
+
+  uint8 dirname[11];
+  copy_cstr_fat(dname, dirname);
+  while (1) {
+    read_cluster(current_cluster, cluster_buffer);
+
+    for (size_t i = 0; i < entries_per_cluster; ++i) {
+      fat32_dir_entry entry = *(fat32_dir_entry*)(cluster_buffer + (i * 32));
+
+      if (entry.file_name[0] == 0x00) // no more entries
+        return -1;
+
+      if (entry.file_name[0] == 0xE5) // deleted
+        continue;
+
+      if (entry.attribute == 0x0F) // Long file name
+        continue;
+
+      if (entry.attribute == DIRECTORY && memcmp(entry.file_name, dirname, 11) == 0) {
+        uint32 target_cluster = (entry.high_entry_first_cluster << 16) | (entry.low_entry_first_cluster);
+
+        uint32 scan_cluster = target_cluster;
+        uint8 scan_buf[cluster_size];
+        while (1) {
+          read_cluster(scan_cluster, scan_buf);
+          for (size_t k = 0; k < entries_per_cluster; ++k) {
+            fat32_dir_entry* e = (fat32_dir_entry*)(scan_buf + (k * 32));
+            if (e->file_name[0] == EMPTY_CLUSTER) break;
+            if (e->file_name[0] == DELETED_CLUSTER) continue;
+            if (e->attribute == 0x0F) continue;
+            if (memcmp(e->file_name, SELF, 11) == 0) continue;
+            if (memcmp(e->file_name, PARENT, 11) == 0) continue;
+            return -1;  // not empty
+          }
+          uint32 next = fat_next_cluster(scan_cluster);
+          if (next >= FAT32_MASK) break;
+          scan_cluster = next;
+        }
+
+        entry.file_name[0] = DELETED_CLUSTER;
+        *(fat32_dir_entry*)(cluster_buffer + (i * 32)) = entry;
+        write_cluster(current_cluster, cluster_buffer);
+        free_chain(target_cluster);
+        return 0;
+      }
+
+    }
+    uint32 next_cluster = fat_next_cluster(current_cluster);
+    if (next_cluster >= FAT32_MASK) // end of chian
+      break;
+    current_cluster = next_cluster;
+  } 
+
   return -1;
 }
 

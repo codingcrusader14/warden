@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include "../kernel/types.h"
+#include "../kernel/file.h"
 
 int sys_exit(int status);
 void sys_yield();
@@ -15,5 +16,8 @@ void* sys_sbrk(int incr);
 int sys_close(int fd);
 int sys_pipe(int p[]);
 int sys_open(const char* path, int flags);
+int sys_mkdir(const char* path);
+int sys_unlink(const char* path);
+int sys_exec(const char* path);
 
 #endif

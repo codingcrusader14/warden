@@ -11,6 +11,7 @@ extern char _qemu_kernel_end;
 void print_head();
 void pmm_init(pa_t* start, pa_t* end);
 pa_t* pmm_alloc();
+pa_t* pmm_alloc_pages(size_t count);
 void pmm_free(pa_t* address);
 
 #endif

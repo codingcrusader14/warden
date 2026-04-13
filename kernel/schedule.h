@@ -23,8 +23,9 @@ extern zombie_t cleanup;
 void cleanup_dead_task();
 void scheduler_add(task_t *t);
 void scheduler_pop();
-void scheduler_init();
 int schedule();
+void scheduler_init();
+void scheduler_boot();
 int scheduler_start();
 
 

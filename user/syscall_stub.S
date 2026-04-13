@@ -19,3 +19,6 @@ SYSCALL sys_sbrk,   7
 SYSCALL sys_close,  8
 SYSCALL sys_pipe,   9
 SYSCALL sys_open,   10
+SYSCALL sys_mkdir,  11
+SYSCALL sys_unlink, 12
+SYSCALL sys_exec,   13

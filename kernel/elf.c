@@ -39,6 +39,8 @@ static bool elf_check_supported(const ELFHeader* hdr) {
 uint64 parse_and_map_elf(const void* elf_buf, size_t len, task_t* proc) {
   if (!elf_buf) return 0; 
 
+  pte_t* pgd_kva = (pte_t*) PA_TO_KVA(proc->pgd);
+
   ELFHeader elf; 
   memcpy(&elf, elf_buf, sizeof(ELFHeader));
   if (!elf_check_supported(&elf)) 
@@ -66,7 +68,7 @@ uint64 parse_and_map_elf(const void* elf_buf, size_t len, task_t* proc) {
       uint64 num_pages = (segment.memsz + PAGE_SIZE - 1) / PAGE_SIZE;
       for (uint64 j = 0; j < num_pages; ++j) {
         pa_t page = (pa_t)pmm_alloc();
-        map_page(proc->pgd, segment.vaddr + (j * PAGE_SIZE), page, USER_FLAGS);
+        map_page(pgd_kva, segment.vaddr + (j * PAGE_SIZE), page, USER_FLAGS);
 
         uint64 offset = j * PAGE_SIZE;
         if (offset >= segment.filesz) {
