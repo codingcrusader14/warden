@@ -19,5 +19,6 @@ int sys_open(const char* path, int flags);
 int sys_mkdir(const char* path);
 int sys_unlink(const char* path);
 int sys_exec(const char* path);
+int sys_chdir(const char* path);
 
 #endif

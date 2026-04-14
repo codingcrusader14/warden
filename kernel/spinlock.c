@@ -52,3 +52,24 @@ void unlock(lock_t* mutex) {
     write_interrupt_mask(c);
   }
 }
+
+static inline uint64 save_daif(void) {
+    uint64 flags;
+    asm volatile("mrs %0, daif" : "=r"(flags));
+    return flags;
+}
+
+static inline void restore_daif(uint64 flags) {
+    asm volatile("msr daif, %0" :: "r"(flags));
+}
+
+void lock_irqsave(lock_t* mutex, uint64* flags) {
+    *flags = save_daif();
+    disable_interrupts();
+    acquire((lock_t*)&mutex->flag);
+}
+
+void unlock_irqrestore(lock_t *mutex, uint64 flags) {
+    release((lock_t*)&mutex->flag);
+    restore_daif(flags);
+}

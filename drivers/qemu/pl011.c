@@ -1,5 +1,7 @@
 #include "pl011.h"
 #include "../../kernel/libk/includes/stdio.h"
+#include "../../kernel/process.h"
+#include "timer.h"
 
 static pl011 uart;
 static uart_buf ubuf;
@@ -140,26 +142,25 @@ static char get() {
 }
 
 void uart_isr() {
-  lock(&ubuf.spinlock); 
   while (!(pl011_read(FLAG_OFFSET) & FLAG_RXFE)) {
     char c = pl011_read(DATA_OFFSET);
     put(c);
   }
   wait_queue_wakeup(&ubuf.rx_wait);
   pl011_write(INTERRUPT_CLEAR_OFFSET, ICR_RXIC);
-  unlock(&ubuf.spinlock);
 }
 
 int uart_read() {
-  lock(&ubuf.spinlock);
-
-  while (ubuf.read == ubuf.write) {
-    wait_queue_sleep(&ubuf.rx_wait, &ubuf.spinlock);
-  }
-
-  int c = get();
-  unlock(&ubuf.spinlock);
-  return c;
+    while (1) {
+        disable_interrupts();
+        if (ubuf.read != ubuf.write) {
+            int c = get();
+            enable_interrupts();
+            return c;
+        }
+        enable_interrupts();
+        asm volatile("wfi");
+    }
 }
 
 int uart_try_read() {

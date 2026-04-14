@@ -69,6 +69,7 @@ fill_pagetables:
 boot_high:
         ldr x0, = vtable_start // Set vector table base address
         msr VBAR_EL1, x0
+        msr SPSel, #1
         dsb sy
         isb   
                     

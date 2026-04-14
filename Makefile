@@ -28,10 +28,12 @@ USER_OBJ += $(patsubst $(USER_SRC)/%.S, $(BUILD_DIR)/user/%.o, $(USER_S))
 FS_OBJ := $(patsubst $(FS_SRC)/%.c, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_C))
 FS_OBJ += $(patsubst $(FS_SRC)/%.S, $(BUILD_DIR)/$(FS_SRC)/%.o, $(FS_S))
 
+USER_LIB := $(BUILD_DIR)/user/user_libc.o
 ALL_KERNEL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ) $(FS_OBJ)
 
 CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I $(FS_SRC) -I kernel/libk/includes -mgeneral-regs-only -MMD -MP
-USER_CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user
+USER_CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user -MMD -MP
+
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
 USER_LDFLAGS := -T $(USER_SRC)/user.ld -nostdlib
@@ -47,7 +49,7 @@ kernel.elf: $(ALL_KERNEL_OBJ) | init.bin $(BUILD_DIR) $(SYSROOT)/boot
 	$(LD) $(LDFLAGS) -o $(SYSROOT)/boot/kernel.elf $^
 	@echo "=== Build complete: $(SYSROOT)/boot/kernel.elf ==="
 
-init.elf: $(USER_OBJ) | $(BUILD_DIR)/user
+init.elf: $(USER_OBJ) $(USER_LIB) | $(BUILD_DIR)/user
 	$(LD) $(USER_LDFLAGS) -o $(BUILD_DIR)/user/init.elf $^
 	@echo "=== Userspace build complete ==="
 
@@ -94,13 +96,13 @@ $(BUILD_DIR)/$(FS_SRC)/%.o: $(FS_SRC)/%.S
 $(BUILD_DIR)/kernel/user_init.o: init.bin
 
 -include $(ALL_KERNEL_OBJ:.o=.d)
+-include $(USER_OBJ:.o=.d)
+-include $(USER_LIB:.o=.d)
 
-USER_PROGRAMS := hello
-
-$(BUILD_DIR)/user/%.elf: $(USER_SRC)/%.c $(BUILD_DIR)/user/syscall_stub.o
+$(BUILD_DIR)/user/%.elf: $(USER_SRC)/%.c $(BUILD_DIR)/user/syscall_stub.o $(USER_LIB)
 	@mkdir -p $(dir $@)
 	$(CC) $(USER_CFLAGS) -c $< -o $(BUILD_DIR)/user/$*.o
-	$(LD) $(USER_LDFLAGS) -o $@ $(BUILD_DIR)/user/$*.o $(BUILD_DIR)/user/syscall_stub.o
+	$(LD) $(USER_LDFLAGS) -o $@ $(BUILD_DIR)/user/$*.o $(BUILD_DIR)/user/syscall_stub.o $(USER_LIB)
 
 install-user: $(patsubst %, $(BUILD_DIR)/user/%.elf, $(USER_PROGRAMS))
 	for f in $^; do mcopy -i disk.img -D o $$f ::$$(basename $$f); done

@@ -1,8 +1,83 @@
-#include "user_syscall.h"
+#include "user_libc.h"
+#include "../kernel/types.h"
 
+#define MAX_LINE_LENGTH 512
+#define MAX_ARGS 32
+
+static const char* built_ins[] =  {"exit"};
+
+static void check_built_in(char* argv[]) {
+  size_t built_in_length = sizeof(built_ins) / (sizeof(char*));
+  for (size_t i = 0; i < built_in_length; ++i) {
+    if (strcmp(argv[0],built_ins[i]) == 0) { // built in exists
+      if (strcmp(argv[0], "exit") == 0) {
+        exit(0);
+      }
+
+    }
+  }
+}
+
+static void trim_line(char* line, int linelen) {
+  int i = 0; 
+  while (i < linelen && isspace(line[i])) {
+    i++;
+  }
+ 
+  int j = linelen;
+  while (j > i && isspace(line[j - 1])) {
+    j--;
+  }
+  
+  int newlen = j - i;
+  memmove(line, line + i, newlen);
+  line[newlen] = '\0';
+}
+
+static int parse_line(char* line, char* argv[]) {
+  int argc = 0, i = 0;
+
+  while (line[i] != '\0' && argc < MAX_ARGS - 1) {
+    while (isspace(line[i])){
+      i++;
+    }
+    if (line[i] == '\0') break;
+
+    argv[argc++] = &line[i];
+
+    while (line[i] != '\0' && !isspace(line[i])) {
+      i++;
+    }
+
+    if (line[i] != '\0') {
+      line[i] = '\0';
+      i++;
+    }
+  }
+  argv[argc] = NULL;
+  return argc;
+}
+
+static void execute_command(char* str[]) {
+  check_built_in(str);
+}
 
 void _start() {
-  sys_write(1, "init started\n", 13);
-  sys_exec("/hello.elf");
-  sys_exit(1);
+  printf("Welcome to Warden -- inspired by our favorite operating system ... Unix!\n");
+
+  char line[MAX_LINE_LENGTH];
+  char* argv[MAX_ARGS];
+  int linelen;
+
+  while (1) {
+    printf("Warden> ");
+    linelen = read(stdin, line, MAX_LINE_LENGTH - 1);
+    if (linelen <= 0) continue;
+
+    line[linelen - 1] = '\0';  // strip newline
+    trim_line(line, linelen);
+    parse_line(line, argv);
+    execute_command(argv);
+  }
+  exit(0);
 }

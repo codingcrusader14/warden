@@ -345,3 +345,21 @@ int handle_unlink(const char* path) {
   return fat32_unlink(parent_cluster, dir_name);
 }
 
+int handle_chdir(const char* path) {
+  if (!path) return -1;
+
+  char buf[MAX_PATH];
+  pte_t* kva_pgd = (pte_t*) PA_TO_KVA(current_task->pgd);
+  if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0) 
+    return -1;
+
+  fat32_dir_entry result;
+  uint32 parent_cluster;
+  if (path_lookup(buf, &result, &parent_cluster) != 0)
+    return 01;
+
+  if (result.attribute != DIRECTORY)
+    return -1;
+  current_task->cwd_cluster = (result.high_entry_first_cluster << 16) | (result.low_entry_first_cluster);
+  return 0;
+}

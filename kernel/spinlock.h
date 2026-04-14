@@ -12,5 +12,7 @@ void lock(lock_t* mutex);
 void unlock(lock_t* mutex);
 void acquire(lock_t* mutex);
 void release(lock_t* mutex);
+void lock_irqsave(lock_t* mutex, uint64* flags);
+void unlock_irqrestore(lock_t* mutex, uint64 flags);
 
 #endif

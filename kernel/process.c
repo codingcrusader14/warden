@@ -4,9 +4,9 @@
 #include "file.h"
 #include "global.h"
 #include "libk/includes/stdio.h"
-#include "libk/includes/stdlib.h"
 #include "libk/includes/string.h"
-#include "console.h"
+#include "libk/includes/stdlib.h"
+#include "../fs/fat32.h"
 #include "mmu_defs.h"
 #include "pmm.h"
 #include "schedule.h"
@@ -46,7 +46,9 @@ void yield() {
 void sleep(lock_t *mutex) {
   current_task->state = BLOCKED;
   unlock(mutex);
+  enable_interrupts();
   schedule();
+  disable_interrupts();
   lock(mutex);
 }
 
@@ -80,6 +82,7 @@ task_t *task_alloc(uint64 ticket_level) {
   new_task->parent = NULL;
   new_task->children = NULL;
   new_task->sibling = NULL;
+  new_task->cwd_cluster = root_cluster;
   wait_queue_init(&new_task->child_wq);
   return new_task;
 }

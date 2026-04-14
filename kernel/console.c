@@ -2,6 +2,7 @@
 #include "schedule.h"
 #include "vmm.h"
 #include "../drivers/qemu/pl011.h"
+#include "../kernel/libk/includes/stdio.h"
 
 int64 console_write(file *f, const void *buf, size_t len) {
   if (!f || !buf) return -1;
@@ -21,22 +22,19 @@ int64 console_read(file *f, void *buf, size_t len) {
   unsigned char kbuf[256];
   len = (len < 256) ? len : 256;
 
-  kbuf[0] = uart_read();
-  ssize_t chars_read = 1;
-
-  for (size_t i = 1; i < len; ++i) {
-    int character = uart_try_read();
-    if (character < 0)
-      break;
-    kbuf[i] = character;
-    chars_read++;
+  size_t i = 0;
+  while (i < len) {
+    int c = uart_read();
+    if (c == '\r') c = '\n';
+    put_char(c);
+    kbuf[i++] = c;
+    if (c == '\n') break;
   }
 
-  if (copy_to_user((pte_t *)PA_TO_KVA(current_task->pgd), buf, kbuf,
-                  chars_read) < 0)
+  if (copy_to_user((pte_t *)PA_TO_KVA(current_task->pgd), buf, kbuf, i) < 0)
     return -1;
 
-  return chars_read;
+  return i;
 }
 
 int64 console_close(file* f) {

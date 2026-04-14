@@ -20,6 +20,7 @@
 #define SYS_MKDIR  11
 #define SYS_UNLINK 12
 #define SYS_EXEC   13
+#define SYS_CHDIR  14
 
 
 int handle_sys_exit(int status);
@@ -36,5 +37,6 @@ int handle_open(const char* path, int flags);
 int handle_mkdir(const char* path); // create a new directory
 int handle_unlink(const char* path); // remove a file
 int handle_exec(const char* path); // loads a new file and executes with arguments
+int handle_chdir(const char* path); // change directory
 
 #endif 

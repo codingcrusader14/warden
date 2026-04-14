@@ -126,7 +126,6 @@ void kernelvec_irq(struct trapframe *tf) {
   uint32 ack_id = read_interrupt_ack();
   switch (ack_id) {
   case 30: {
-    ;
     timer_rearm();
     write_end_of_interrupt(ack_id);
     schedule();

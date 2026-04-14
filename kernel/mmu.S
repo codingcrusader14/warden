@@ -40,6 +40,7 @@ enter_userspace:
         // User stack
         msr sp_el0, x2
 
+
         eret
 
 

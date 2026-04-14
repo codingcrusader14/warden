@@ -60,6 +60,7 @@ typedef struct task{
   struct task* sibling;
   wait_queue child_wq;
   file* fd_table[MAX_FDS]; // file descriptor table
+  uint32 cwd_cluster;
 } task_t;
 
 typedef struct {

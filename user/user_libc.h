@@ -1,0 +1,37 @@
+#ifndef LIB_C
+#define LIB_C
+
+#include <stddef.h>
+#include <stdbool.h>
+
+#define stdin  0
+#define stdout 1
+#define stderr 2
+
+void  exit(int status);
+void  yield();
+int   write(int fd, const void* buf, size_t len);
+int   read(int fd, void* buf, size_t len);
+int   getpid();
+int   fork();
+int   wait(int* status);
+void* sbrk(int incr);
+int   close(int fd);
+int   pipe(int p[]);
+int   open(const char* path, int flags);
+int   mkdir(const char* path);
+int   unlink(const char* path);
+int   exec(const char* path);
+int   chdir(const char* path);
+
+size_t strlen(const char*);
+int strcmp(const char* s1, const char* s2);
+void* memcpy(void* , const void* , size_t);
+void* memmove(void*, const void*, size_t);
+void* memset(void*, int, size_t);
+int memcmp(const void*, const void*, size_t);
+int printf(const char* format, ...);
+
+bool isspace(int c);
+
+#endif
