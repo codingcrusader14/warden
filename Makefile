@@ -33,6 +33,8 @@ ALL_KERNEL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ) $(FS_OBJ)
 
 CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I $(FS_SRC) -I kernel/libk/includes -mgeneral-regs-only -MMD -MP
 USER_CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user -MMD -MP
+USER_PROGRAMS := ls
+
 
 ASFLAGS := -mcpu=cortex-a57
 LDFLAGS := -T $(KERNEL_SRC)/linker.ld -nostdlib
@@ -99,7 +101,7 @@ $(BUILD_DIR)/kernel/user_init.o: init.bin
 -include $(USER_OBJ:.o=.d)
 -include $(USER_LIB:.o=.d)
 
-$(BUILD_DIR)/user/%.elf: $(USER_SRC)/%.c $(BUILD_DIR)/user/syscall_stub.o $(USER_LIB)
+$(BUILD_DIR)/user/%.elf: $(USER_SRC)/programs/%.c $(BUILD_DIR)/user/syscall_stub.o $(USER_LIB)
 	@mkdir -p $(dir $@)
 	$(CC) $(USER_CFLAGS) -c $< -o $(BUILD_DIR)/user/$*.o
 	$(LD) $(USER_LDFLAGS) -o $@ $(BUILD_DIR)/user/$*.o $(BUILD_DIR)/user/syscall_stub.o $(USER_LIB)

@@ -3,6 +3,7 @@
 #include "../kernel/libk/includes/string.h"
 #include "../kernel/libk/includes/stdio.h"
 #include "../kernel/libk/includes/stdlib.h"
+#include "../kernel/schedule.h"
 
 static uint32 sector_size;
 static uint32 total_sectors; 
@@ -300,12 +301,29 @@ int dir_lookup(uint32 dir_cluster, const char* name, fat32_dir_entry* result) {
 }
 
 int path_lookup(const char* path, fat32_dir_entry* result, uint32* parent_cluster) {
+  if (!path) return -1;
+
+  if (strcmp(path, ".") == 0) {
+    memset(result, 0, sizeof(fat32_dir_entry));
+    result->attribute = 0x10;
+    uint32 cluster = current_task ? current_task->cwd_cluster : root_cluster;
+    result->high_entry_first_cluster = (cluster >> 16) & 0xFFFF;
+    result->low_entry_first_cluster = cluster & 0xFFFF;
+    if (parent_cluster)
+        *parent_cluster = cluster;
+    return 0;
+  }
+
   uint32 starting_cluster = root_cluster;
   char sub_dir[MAX_PATH];
   int i = 0, j = 0;
 
-  if (path[i] == '/') 
+  if (path[0] == '/') {
+    starting_cluster = root_cluster;
     i++;
+  } else {
+    starting_cluster = current_task ? current_task->cwd_cluster : root_cluster;
+  }
 
   while (path[i] != '\0') {
     j = 0;

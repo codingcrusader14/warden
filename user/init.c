@@ -58,8 +58,28 @@ static int parse_line(char* line, char* argv[]) {
   return argc;
 }
 
-static void execute_command(char* str[]) {
-  check_built_in(str);
+static void execute_command(char* argv[]) {
+  check_built_in(argv);
+  int pid = fork();
+
+  if (pid == 0) {
+    exec(argv[0]);
+
+    // try with .elf extension
+    char buf[256];
+    size_t len = strlen(argv[0]);
+    memcpy(buf, argv[0], len);
+    memcpy(buf + len, ".elf", 4);
+    buf[len + 4] = '\0';
+    exec(buf);
+
+    printf("command not found: %s\n", argv[0]);
+    exit(1);
+  } 
+  else if (pid > 0) 
+  {
+    wait(NULL);
+  }
 }
 
 void _start() {
@@ -76,7 +96,8 @@ void _start() {
 
     line[linelen - 1] = '\0';  // strip newline
     trim_line(line, linelen);
-    parse_line(line, argv);
+    int argc = parse_line(line, argv);
+    if (argc == 0) continue;
     execute_command(argv);
   }
   exit(0);

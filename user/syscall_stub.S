@@ -23,3 +23,4 @@ SYSCALL sys_mkdir,  11
 SYSCALL sys_unlink, 12
 SYSCALL sys_exec,   13
 SYSCALL sys_chdir,  14
+SYSCALL sys_getdents 15

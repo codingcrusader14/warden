@@ -222,22 +222,30 @@ static pte_t* walk(pte_t* base, va_t va) {
 }
 
 int copy_to_user(pte_t* user_pt, void* dst, const void* src, size_t len) {
-  uintptr_t addr = (uintptr_t)dst;
-  uintptr_t end = addr + len;
+    uintptr_t addr = (uintptr_t)dst;
+    uintptr_t end = addr + len;
+    uint64 copied = 0;
 
-  if (end < addr) return -1;
-  if (addr >= KERNEL_HIGH_VA_ADDRESS) return -1;
-  if (end > KERNEL_HIGH_VA_ADDRESS) return -1;
+    if (end < addr) return -1;
+    if (addr >= KERNEL_HIGH_VA_ADDRESS) return -1;
 
-  for (va_t page = addr & ~PAGE_BITS; page <= end - 1; page += PAGE_SIZE) {
-    pte_t* pte = walk(user_pt, page);
-    if (!pte) return -1;
-    if (!(*pte & AP_ALLOW_E0)) return -1;
-    if (*pte & AP_READ_ONLY) return -1;
-  }
+    while (copied < len) {
+        pte_t* pte = walk(user_pt, addr);
+        if (!pte) return -1;
 
-  memcpy(dst, src, len);
-  return 0;
+        pa_t pa = (*pte & TABLE_ADDR_MASK) + (addr & PAGE_BITS);
+        va_t kva = PA_TO_KVA(pa);
+
+        uint64 page_remaining = PAGE_SIZE - (addr & PAGE_BITS);
+        uint64 chunk = (page_remaining < (len - copied)) ? page_remaining : (len - copied);
+
+        memcpy((void*)kva, src + copied, chunk);
+
+        copied += chunk;
+        addr += chunk;
+    }
+
+    return 0;
 }
 
 int strncpy_from_user(pte_t* current_pt, const char* user_str, char* kernel_buf, size_t max) {

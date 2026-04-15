@@ -22,6 +22,8 @@ int   open(const char* path, int flags) { return sys_open(path, flags); }
 int   mkdir(const char* path) { return sys_mkdir(path); }
 int   unlink(const char* path) { return sys_unlink(path); }
 int   exec(const char* path) { return sys_exec(path); }
+int   chdir(const char* path) { return sys_chdir(path); }
+int   getdents(int fd, void* buf, size_t len) { return sys_getdents(fd, buf, len); }
 
 size_t strlen(const char *str) {
   size_t len = 0;
@@ -108,8 +110,17 @@ int printf(const char *format, ...) {
     char character = *format;
 
     switch (character) {
-      case '%':
+      case '%': {
         format++;
+        int precision = -1;
+        if (*format == '.') {
+          format++;
+          precision = 0;
+          while (*format >= '0' && *format <= '9') {
+            precision = precision * 10 + (*format - '0');
+            format++;
+          }
+        }
         switch (*format) {
           case 'd': // int
           case 'i': { // int  
@@ -143,7 +154,10 @@ int printf(const char *format, ...) {
           }
           case 's': { // string
             const char* str = va_arg(ap, char*);
-            write(stdout, str, strlen(str));
+            int len = strlen(str);
+            if (precision >= 0 && precision < len)
+                len = precision;
+            write(stdout, str, len);
             break;
           }
           case 'x': { // hex
@@ -239,6 +253,7 @@ int printf(const char *format, ...) {
         write(stdout, &character, 1);
         format++;
         break;
+      }
     }
   }
   va_end(ap);

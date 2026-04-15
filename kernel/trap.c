@@ -12,13 +12,14 @@ void kernelvec_sync(struct trapframe *tf) {
   current_task->tf = tf;
   uint64 ec = (tf->esr_el1 >> 26) & (0x3F);
   switch (ec) {
-  case 0x15: { // system calls
-    uint64 sys_num = tf->x8;
-    switch (sys_num) {
-    case SYS_EXIT: {
-      kprintf("SYS_EXIT from pid %d\n", current_task->pid);
-      tf->x0 = handle_sys_exit(tf->x0);
-      break;
+
+    case 0x15: { // system calls
+      uint64 sys_num = tf->x8;
+      switch (sys_num) {
+      case SYS_EXIT: {
+        //printf("SYS_EXIT from pid %d\n", current_task->pid); // debug process
+        tf->x0 = handle_sys_exit(tf->x0);
+        break;
     }
 
     case SYS_YIELD: {
@@ -99,6 +100,20 @@ void kernelvec_sync(struct trapframe *tf) {
     case SYS_EXEC: {
       const char* path = (const char*)tf->x0;
       tf->x0 = handle_exec(path);
+      break;
+    }
+
+    case SYS_CHDIR: {
+      const char* path = (const char*)tf->x0;
+      tf->x0 = handle_chdir(path);
+      break;
+    }
+
+    case SYS_GETDENTS: {
+      int fd = (int)tf->x0;
+      void* buf = (void*)tf->x1;
+      size_t buf_len = (size_t)tf->x2;
+      tf->x0 = handle_getdents(fd, buf, buf_len);
       break;
     }
 

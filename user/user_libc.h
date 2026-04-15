@@ -3,6 +3,16 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
+
+#define MAX_DIRECT_ENTRIES 64
+
+typedef struct {
+    char name[11];
+    uint8_t attr;
+    uint32_t size;
+} dirent;
+
 
 #define stdin  0
 #define stdout 1
@@ -23,6 +33,7 @@ int   mkdir(const char* path);
 int   unlink(const char* path);
 int   exec(const char* path);
 int   chdir(const char* path);
+int   getdents(int fd, void* buf, size_t len);
 
 size_t strlen(const char*);
 int strcmp(const char* s1, const char* s2);

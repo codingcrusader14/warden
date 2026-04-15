@@ -82,7 +82,7 @@ file* vfs_file_open(const char* path, int flags) {
     {
       parent_cluster = root_cluster;
     }
-    
+
     if (fat32_create(parent_cluster, name, &entry) != 0)
       return NULL;
   }
@@ -104,7 +104,8 @@ file* vfs_file_open(const char* path, int flags) {
   }
   vfs_data->inode = inode;
   vfs_data->offset = 0;
-  file* f = file_alloc(FILE_INODE, &vfs_fops, vfs_data);
+  enum file_types type = (entry.attribute & 0x10) ? FILE_DIRECTORY : FILE_INODE;
+  file* f = file_alloc(type, &vfs_fops, vfs_data);
   if (!f) {
     kfree(inode);
     kfree(vfs_data);

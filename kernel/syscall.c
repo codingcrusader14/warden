@@ -25,9 +25,10 @@ int handle_sys_exit(int status) {
   current_task->state = ZOMBIE;
 
   if (current_task->parent) {
-    lock(&current_task->parent->child_wq.spinlock);
+    uint64 flags;
+    lock_irqsave(&current_task->child_wq.spinlock, &flags);
     wait_queue_wakeup(&current_task->parent->child_wq);
-    unlock(&current_task->parent->child_wq.spinlock);
+    unlock_irqrestore(&current_task->child_wq.spinlock, flags);
   }
   schedule();
   kprintf("Panic zombie scheduled\n");
@@ -101,51 +102,44 @@ pid_t handle_fork() {
   return child->pid;
 }
 
-int handle_exec(const char* path) { // replace current proccess image with a new one
-  if (!path) return -1;
+int handle_exec(const char* path) {
+    if (!path) return -1;
 
-  char buf[MAX_PATH];
-  pte_t* kva_pgd = (pte_t*)PA_TO_KVA(current_task->pgd);
-  if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0)
-    return -1;
+    char buf[MAX_PATH];
+    pte_t* kva_pgd = (pte_t*)PA_TO_KVA(current_task->pgd);
+    if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0)
+        return -1;
 
-  fat32_dir_entry entry;
-  if (path_lookup(buf, &entry, NULL) != 0) {
-    return -1;
-  }
+    fat32_dir_entry entry;
+    if (path_lookup(buf, &entry, NULL) != 0)
+        return -1;
 
-  uint8* elf_buf = kmalloc(entry.size); 
-  if (!elf_buf) {
-    kprintf("kmalloc failed\n");
-    return -1;
-  }
+    uint8* elf_buf = kmalloc(entry.size);
+    if (!elf_buf) return -1;
 
+    fat32_read(&entry, elf_buf, 0, entry.size);
+    free_user_pages(kva_pgd);
 
-  fat32_read(&entry, elf_buf, 0, entry.size);
+    uint64 entry_point = parse_and_map_elf(elf_buf, entry.size, current_task);
+    kfree(elf_buf);
+    if (!entry_point) return -1;
 
-  free_user_pages(kva_pgd);
+    pa_t stack = (pa_t)pmm_alloc();
+    map_page(kva_pgd, USER_STACK - PAGE_SIZE, stack, USER_FLAGS);
+    flush_tlb();
 
-  uint64 entry_point = parse_and_map_elf(elf_buf, entry.size, current_task);
-  kfree(elf_buf);
-  if (!entry_point) return -1; 
-
-  pa_t stack = (pa_t)pmm_alloc();
-  map_page(kva_pgd, USER_STACK - PAGE_SIZE, stack, USER_FLAGS);
-
-  flush_tlb();
-  current_task->tf->elr_el1 = entry_point;
-  current_task->tf->sp_el0 = USER_STACK;
-
-  memset(&current_task->tf->x0, 0, 31 * sizeof(uint64));
-
-  return 0; // exec failed
+    memset(&current_task->tf->x0, 0, 31 * sizeof(uint64));
+    current_task->tf->elr_el1 = entry_point;
+    current_task->tf->sp_el0 = USER_STACK;
+    return 0;
 }
 
 pid_t handle_wait(int* status) {
   if (!current_task->children) return -1;
 
   while (1) {
-    lock(&current_task->child_wq.spinlock);
+    uint64 flags;
+    lock_irqsave(&current_task->child_wq.spinlock, &flags);
 
     task_t* prev = NULL;
     task_t* curr = current_task->children;
@@ -162,16 +156,15 @@ pid_t handle_wait(int* status) {
         if (status) 
           *status = curr->exit_status;
 
-        unlock(&current_task->child_wq.spinlock);
+        unlock_irqrestore(&current_task->child_wq.spinlock, flags);
         task_free(curr);
         return child_pid;
-        
       }
       prev = curr;
       curr = curr->sibling;
     }
     wait_queue_sleep(&current_task->child_wq, &current_task->child_wq.spinlock);
-    unlock(&current_task->child_wq.spinlock);
+    unlock_irqrestore(&current_task->child_wq.spinlock, flags);
   }
   return -1; 
 }
@@ -362,4 +355,40 @@ int handle_chdir(const char* path) {
     return -1;
   current_task->cwd_cluster = (result.high_entry_first_cluster << 16) | (result.low_entry_first_cluster);
   return 0;
+}
+
+int handle_getdents(int fd, void* buffer, size_t buf_len) {
+  
+  file* entry = current_task->fd_table[fd];
+
+  if (!entry) 
+    return -1;
+
+  if (entry->type != FILE_DIRECTORY) {
+    return -1;
+  }
+
+  vfs_file_data* fdata = (vfs_file_data*)entry->private_data;
+  uint32 starting_cluster = fdata->inode->start_cluster;
+
+  fat32_dir_entry entries[MAX_DIRECT_ENTRIES];
+  int count = read_directory(starting_cluster, entries, MAX_DIRECT_ENTRIES);
+
+  int max_entries = buf_len / sizeof(dirent);
+  if (count > max_entries) {
+    count = max_entries;
+  }
+
+  dirent dents[MAX_DIRECT_ENTRIES];
+  for (int i = 0; i < count; ++i) {
+    memcpy(dents[i].name, entries[i].file_name, 11);
+    dents[i].attr = entries[i].attribute;
+    dents[i].size = entries[i].size;
+  }
+
+  pte_t* kva_pgd = (pte_t*)PA_TO_KVA(current_task->pgd);
+  if (copy_to_user(kva_pgd, buffer, dents, count * sizeof(dirent)) != 0)
+    return -1;
+
+  return count;
 }

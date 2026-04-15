@@ -5,12 +5,14 @@
 
 #define MAX_FDS 16
 #define GLOBAL_FILE_CAP 64
+#define MAX_DIRECT_ENTRIES 64
 
 enum file_types {
   FILE_INODE,
   FILE_CONSOLE,
   FILE_PIPE_READ,
   FILE_PIPE_WRITE,
+  FILE_DIRECTORY,
 };
 
 struct file_ops;
@@ -21,6 +23,12 @@ typedef struct {
   struct file_ops* ops;
   void* private_data;
 } file;
+
+typedef struct {
+    char name[11];
+    uint8 attr;
+    uint32 size;
+} dirent;
 
 typedef struct file_ops {
   int64 (*read)(file*, void*, size_t);

@@ -6,6 +6,7 @@
 static block_header_t *head;
 
 void *kmalloc(size_t size) {
+  size = (size + 15) & ~15;
   if (head == NULL) { // no free pages
     pa_t *page = pmm_alloc();
     if (!page) { // page allocation failed, or no physical pages left

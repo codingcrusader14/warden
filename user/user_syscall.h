@@ -3,7 +3,6 @@
 
 #include <stddef.h>
 #include "../kernel/types.h"
-#include "../kernel/file.h"
 
 int sys_exit(int status);
 void sys_yield();
@@ -20,5 +19,6 @@ int sys_mkdir(const char* path);
 int sys_unlink(const char* path);
 int sys_exec(const char* path);
 int sys_chdir(const char* path);
+int sys_getdents(int fd, void* buf, size_t buf_len);
 
 #endif

@@ -8,6 +8,20 @@ size_t strlen(const char *str) {
   return len;
 }
 
+int strcmp(const char* s1, const char* s2) {
+  if (!s1) return -1;
+  if (!s2) return 1;
+
+  int i = 0;
+  while (s1[i] != '\0' && s2[i] != '\0') {
+    if (s1[i] != s2[i]) {
+      return s1[i] - s2[i];
+    }
+    i++;
+  }
+  return s1[i] - s2[i];
+}
+
 void *memcpy(void *restrict dst, const void *restrict src, size_t n) {
   unsigned char *dst_copy = (unsigned char *)dst;
   const unsigned char *src_copy = (const unsigned char *)src;
