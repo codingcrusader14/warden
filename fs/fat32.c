@@ -203,6 +203,22 @@ static void copy_cstr_fat(const char* str, void* buf) {
   memcpy(buf, fat_buf, 11);
 }
 
+static void fat_cstr(uint8* raw, char* out) {
+  int pos = 0;
+
+  for (int i = 0; i < 8 && raw[i] != ' '; i++) {
+    out[pos++] = raw[i];
+  }
+
+  if (raw[8] != ' ') {
+    out[pos++] = '.';
+    for (int i = 8; i < 11 && raw[i] != ' '; i++) {
+      out[pos++] = raw[i];
+    }
+  }
+  out[pos] = '\0';
+}
+
 int update_directory(uint32 dir_cluster, fat32_dir_entry* updated) {
   uint32 current_cluster = dir_cluster;
   uint32 entries_per_cluster = cluster_size / 32;
@@ -264,6 +280,19 @@ int read_directory(uint32 start_cluster, fat32_dir_entry* entries, uint32 max_en
 }
 
 int dir_lookup(uint32 dir_cluster, const char* name, fat32_dir_entry* result) {
+
+  if (strcmp(name, "..") == 0) {
+        fat32_dir_entry entries[MAX_DIRECT_ENTRIES];
+        int count = read_directory(dir_cluster, entries, MAX_DIRECT_ENTRIES);
+        for (int i = 0; i < count; i++) {
+            if (memcmp(entries[i].file_name, PARENT, 11) == 0) {
+                *result = entries[i];
+                return 0;
+            }
+        }
+        return -1;
+    }
+
   uint32 current_cluster = dir_cluster;
   uint32 entries_per_cluster = cluster_size / 32;
   uint8 cluster_buffer[cluster_size];
@@ -287,6 +316,7 @@ int dir_lookup(uint32 dir_cluster, const char* name, fat32_dir_entry* result) {
 
 
       if (memcmp(filename, entry.file_name, sizeof(filename)) == 0) {
+        
         *result = entry;
         return 0;
       }
@@ -312,6 +342,20 @@ int path_lookup(const char* path, fat32_dir_entry* result, uint32* parent_cluste
     if (parent_cluster)
         *parent_cluster = cluster;
     return 0;
+  }
+
+  if (strcmp(path, "..") == 0) {
+    uint32 cluster = current_task ? current_task->cwd_cluster : root_cluster;
+    if (cluster == root_cluster) {
+      memset(result, 0, sizeof(fat32_dir_entry));
+      result->attribute = 0x10;
+      result->high_entry_first_cluster = (root_cluster >> 16) & 0xFFFF;
+      result->low_entry_first_cluster = root_cluster & 0xFFFF;
+      if (parent_cluster) {
+        *parent_cluster = root_cluster;
+      }
+      return 0;
+    }
   }
 
   uint32 starting_cluster = root_cluster;
@@ -647,6 +691,38 @@ int fat32_rmdir(uint32 dir_cluster, const char* dname) {
       break;
     current_cluster = next_cluster;
   } 
+
+  return -1;
+}
+
+int find_parent_and_name(uint32 current_cluster, uint32* parent_cluster, char* name_out) {
+  fat32_dir_entry entries[MAX_DIRECT_ENTRIES];
+  int count = read_directory(current_cluster, entries, MAX_DIRECT_ENTRIES);
+  if (count < 0) return -1;
+
+
+  for (int i = 0; i < count; i++) {
+    if (memcmp(entries[i].file_name, PARENT, 11) == 0) {   // find parent ".."
+      *parent_cluster = (entries[i].high_entry_first_cluster << 16) | (entries[i].low_entry_first_cluster);
+      break;
+    }
+  }
+
+  if (*parent_cluster == 0)
+    *parent_cluster = root_cluster;
+
+  fat32_dir_entry parent_entries[MAX_DIRECT_ENTRIES];
+  int pcount = read_directory(*parent_cluster, parent_entries,MAX_DIRECT_ENTRIES);
+  if (pcount < 0) return -1;
+
+  for (int i = 0; i < pcount; ++i) {
+    uint32 cluster = (parent_entries[i].high_entry_first_cluster << 16) | (parent_entries[i].low_entry_first_cluster);
+    if (cluster == current_cluster) {
+      fat_cstr(parent_entries[i].file_name, name_out);
+      return 0;
+    }
+  }
+
 
   return -1;
 }

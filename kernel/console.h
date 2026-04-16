@@ -4,6 +4,9 @@
 #include "types.h"
 #include "file.h"
 
+#define DELETE 0x7F
+#define BACKSPACE 0x08
+
 extern file_ops console_ops;
 
 int64 console_read(file* f, void* buf, size_t len);

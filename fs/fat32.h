@@ -84,6 +84,7 @@ int update_directory(uint32 dir_cluster, fat32_dir_entry* updated);
 int fat32_mkdir(uint32 dir_cluster, const char* name);
 int fat32_unlink(uint32 dir_cluster, const char* name);
 int fat32_rmdir(uint32 dir_cluster, const char* dname);
+int find_parent_and_name(uint32 current_cluster, uint32* parent_cluster, char* name_out);
 void print_metadata();
 
 

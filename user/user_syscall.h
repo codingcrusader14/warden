@@ -17,8 +17,9 @@ int sys_pipe(int p[]);
 int sys_open(const char* path, int flags);
 int sys_mkdir(const char* path);
 int sys_unlink(const char* path);
-int sys_exec(const char* path);
+int sys_exec(const char* path, char* const argv[]);
 int sys_chdir(const char* path);
 int sys_getdents(int fd, void* buf, size_t buf_len);
+int sys_getcwd(void* buf, size_t buf_len);
 
 #endif

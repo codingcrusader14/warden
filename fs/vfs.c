@@ -2,6 +2,7 @@
 #include "fat32.h"
 #include "../kernel/file.h"
 #include "../kernel/global.h"
+#include "../kernel/schedule.h"
 #include "../kernel/libk/includes/string.h"
 #include "../kernel/libk/includes/stdlib.h"
 #include "../kernel/libk/includes/stdio.h"
@@ -80,7 +81,7 @@ file* vfs_file_open(const char* path, int flags) {
     }
     else 
     {
-      parent_cluster = root_cluster;
+      parent_cluster = current_task ? current_task->cwd_cluster : root_cluster;
     }
 
     if (fat32_create(parent_cluster, name, &entry) != 0)

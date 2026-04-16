@@ -21,9 +21,10 @@ int   pipe(int p[]) { return sys_pipe(p); }
 int   open(const char* path, int flags) { return sys_open(path, flags); }
 int   mkdir(const char* path) { return sys_mkdir(path); }
 int   unlink(const char* path) { return sys_unlink(path); }
-int   exec(const char* path) { return sys_exec(path); }
+int   exec(const char* path, char* const argv[]) { return sys_exec(path, argv); }
 int   chdir(const char* path) { return sys_chdir(path); }
 int   getdents(int fd, void* buf, size_t len) { return sys_getdents(fd, buf, len); }
+int   getcwd(void* buf, size_t len) { return sys_getcwd(buf, len); }
 
 size_t strlen(const char *str) {
   size_t len = 0;

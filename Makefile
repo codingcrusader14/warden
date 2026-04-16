@@ -33,7 +33,7 @@ ALL_KERNEL_OBJ := $(KERNEL_OBJ) $(DRIVERS_OBJ) $(FS_OBJ)
 
 CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -ggdb -fno-omit-frame-pointer -fno-inline -mcpu=cortex-a57 -march=armv8-a -I kernel -I drivers -I $(FS_SRC) -I kernel/libk/includes -mgeneral-regs-only -MMD -MP
 USER_CFLAGS := -Wall -Werror -Wextra -ffreestanding -nostdlib -std=gnu23 -O0 -g3 -mcpu=cortex-a57 -march=armv8-a -mgeneral-regs-only -I user -MMD -MP
-USER_PROGRAMS := ls
+USER_PROGRAMS := ls pwd clear cat wc echo touch rm mkdir
 
 
 ASFLAGS := -mcpu=cortex-a57

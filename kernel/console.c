@@ -26,6 +26,17 @@ int64 console_read(file *f, void *buf, size_t len) {
   while (i < len) {
     int c = uart_read();
     if (c == '\r') c = '\n';
+
+    if (c == DELETE || c == BACKSPACE) {
+      if (i > 0) {
+        i--;
+        put_char('\b');
+        put_char(' ');
+        put_char('\b');
+      }
+      continue;
+    }
+
     put_char(c);
     kbuf[i++] = c;
     if (c == '\n') break;

@@ -5,6 +5,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define O_RDONLY 0
+#define O_WRONLY 1
+#define O_RDWR   2
+#define O_CREAT  4
+
 #define MAX_DIRECT_ENTRIES 64
 
 typedef struct {
@@ -31,9 +36,10 @@ int   pipe(int p[]);
 int   open(const char* path, int flags);
 int   mkdir(const char* path);
 int   unlink(const char* path);
-int   exec(const char* path);
+int   exec(const char* path, char* const argv[]);
 int   chdir(const char* path);
 int   getdents(int fd, void* buf, size_t len);
+int   getcwd(void* buf, size_t len);
 
 size_t strlen(const char*);
 int strcmp(const char* s1, const char* s2);

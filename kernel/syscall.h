@@ -5,6 +5,9 @@
 #include "types.h"
 #include "file.h"
 
+#define MAX_ARGS 16
+#define MAX_ARG_LEN 64
+
 /* System call numbers correspond to system calls that are handled in trap.c (trap handler) */
 #define SYS_EXIT   0
 #define SYS_YIELD  1
@@ -22,6 +25,7 @@
 #define SYS_EXEC   13
 #define SYS_CHDIR  14
 #define SYS_GETDENTS  15
+#define SYS_GETCWD  16
 
 int handle_sys_exit(int status);
 void handle_sys_yield();
@@ -36,8 +40,9 @@ int handle_pipe(int p[]);
 int handle_open(const char* path, int flags);
 int handle_mkdir(const char* path); // create a new directory
 int handle_unlink(const char* path); // remove a file
-int handle_exec(const char* path); // loads a new file and executes with arguments
+int handle_exec(const char* path, char* const argv[]); // loads a new file and executes with arguments
 int handle_chdir(const char* path); // change directory
 int handle_getdents(int fd, void* buffer, size_t bufsize); // reads current directory entries
+int handle_getcwd(void* buffer, size_t bufsize); // gets current working directory
 
 #endif 

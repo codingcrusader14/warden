@@ -99,7 +99,10 @@ void kernelvec_sync(struct trapframe *tf) {
 
     case SYS_EXEC: {
       const char* path = (const char*)tf->x0;
-      tf->x0 = handle_exec(path);
+      char* const* argv = (char* const*)tf->x1;
+      int ret = handle_exec(path, argv);
+      if (ret != 0)
+        tf->x0 = ret;
       break;
     }
 
@@ -114,6 +117,13 @@ void kernelvec_sync(struct trapframe *tf) {
       void* buf = (void*)tf->x1;
       size_t buf_len = (size_t)tf->x2;
       tf->x0 = handle_getdents(fd, buf, buf_len);
+      break;
+    }
+
+    case SYS_GETCWD: {
+      void* buf = (void*)tf->x0;
+      size_t buf_len = (size_t)tf->x1;
+      tf->x0 = handle_getcwd(buf, buf_len);
       break;
     }
 

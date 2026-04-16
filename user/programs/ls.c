@@ -1,6 +1,8 @@
 #include "../user_libc.h"
 
-void _start() {
+void _start(int argc, char* argv[]) {
+  (void)argc;
+  (void)argv;
   const char *path = ".";
   int fd = open(path, 0);
 
