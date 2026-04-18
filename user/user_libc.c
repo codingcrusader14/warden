@@ -25,6 +25,7 @@ int   exec(const char* path, char* const argv[]) { return sys_exec(path, argv); 
 int   chdir(const char* path) { return sys_chdir(path); }
 int   getdents(int fd, void* buf, size_t len) { return sys_getdents(fd, buf, len); }
 int   getcwd(void* buf, size_t len) { return sys_getcwd(buf, len); }
+int   dup2(int oldfd, int newfd) { return sys_dup2(oldfd, newfd); }
 
 size_t strlen(const char *str) {
   size_t len = 0;

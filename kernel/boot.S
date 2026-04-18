@@ -70,6 +70,11 @@ boot_high:
         ldr x0, = vtable_start // Set vector table base address
         msr VBAR_EL1, x0
         msr SPSel, #1
+
+        // enable userspace access to cycle counter 
+        mov x0, #3
+        msr cntkctl_el1, x0
+
         dsb sy
         isb   
                     

@@ -1,5 +1,6 @@
 #include "pipe.h"
 #include "libk/includes/stdlib.h"
+#include "libk/includes/stdio.h"
 #include "libk/includes/string.h"
 #include "wait_queue.h"
 

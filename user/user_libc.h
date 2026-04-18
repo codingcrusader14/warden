@@ -40,6 +40,7 @@ int   exec(const char* path, char* const argv[]);
 int   chdir(const char* path);
 int   getdents(int fd, void* buf, size_t len);
 int   getcwd(void* buf, size_t len);
+int   dup2(int oldfd, int newfd);
 
 size_t strlen(const char*);
 int strcmp(const char* s1, const char* s2);
@@ -50,5 +51,21 @@ int memcmp(const void*, const void*, size_t);
 int printf(const char* format, ...);
 
 bool isspace(int c);
+
+static inline uint64_t rdcycle(void) {
+    uint64_t val;
+    asm volatile("mrs %0, cntvct_el0" : "=r"(val));
+    return val;
+}
+
+static inline uint64_t rdfreq(void) {
+    uint64_t val;
+    asm volatile("mrs %0, cntfrq_el0" : "=r"(val));
+    return val;
+}
+
+static inline uint64_t cycles_to_ns(uint64_t cycles, uint64_t freq) {
+    return (cycles * 1000000000ULL) / freq;
+}
 
 #endif

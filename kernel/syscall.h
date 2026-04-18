@@ -26,6 +26,7 @@
 #define SYS_CHDIR  14
 #define SYS_GETDENTS  15
 #define SYS_GETCWD  16
+#define SYS_DUP2    17
 
 int handle_sys_exit(int status);
 void handle_sys_yield();
@@ -44,5 +45,6 @@ int handle_exec(const char* path, char* const argv[]); // loads a new file and e
 int handle_chdir(const char* path); // change directory
 int handle_getdents(int fd, void* buffer, size_t bufsize); // reads current directory entries
 int handle_getcwd(void* buffer, size_t bufsize); // gets current working directory
+int handle_dup2(int oldfd, int newfd); // duplicates file descriptor closes old one
 
 #endif 

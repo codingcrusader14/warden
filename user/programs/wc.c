@@ -2,8 +2,25 @@
 
 void _start(int argc, char* argv[]) {
   if (argc < 2) {
-    printf("Usage cat <file1> <file2> ...\n");
-    exit(1);
+    int nl = 0, words = 0, characters = 0;
+    int n;
+    int in_word = 0;
+    char buffer[512];
+
+    while ((n = read(stdin, buffer, sizeof(buffer))) > 0) {
+        for (int i = 0; i < n; i++) {
+            characters++;
+            if (buffer[i] == '\n') nl++;
+            if (isspace(buffer[i])) {
+                in_word = 0;
+            } else if (!in_word) {
+                in_word = 1;
+                words++;
+            }
+        }
+    }
+    printf("newlines: %d   words: %d  characters: %d\n", nl, words, characters);
+    exit(0);
   }
 
   int total_nl = 0, total_words = 0, total_characters = 0;

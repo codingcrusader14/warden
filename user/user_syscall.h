@@ -21,5 +21,6 @@ int sys_exec(const char* path, char* const argv[]);
 int sys_chdir(const char* path);
 int sys_getdents(int fd, void* buf, size_t buf_len);
 int sys_getcwd(void* buf, size_t buf_len);
+int sys_dup2(int oldfd, int newfd);
 
 #endif

@@ -20,6 +20,13 @@
 extern void fork_return();
 
 int handle_sys_exit(int status) {
+  // close all open file descriptors
+  for (int i = 0; i < MAX_FDS; i++) {
+    if (current_task->fd_table[i]) {
+      file_close(current_task->fd_table[i]);
+      current_task->fd_table[i] = NULL;
+    }
+  }
   current_task->exit_status = status;
   current_task->state = ZOMBIE;
 
@@ -104,11 +111,11 @@ pid_t handle_fork() {
   return child->pid;
 }
 
-int handle_exec(const char *path, char* const argv[]) {
+int handle_exec(const char *path, char *const argv[]) {
   if (!path)
     return -1;
 
-  uint64 user_argv[MAX_ARGS];  
+  uint64 user_argv[MAX_ARGS];
   char buf[MAX_PATH];
   pte_t *kva_pgd = (pte_t *)PA_TO_KVA(current_task->pgd);
   if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0)
@@ -120,7 +127,7 @@ int handle_exec(const char *path, char* const argv[]) {
   }
 
   char k_argv[MAX_ARGS][MAX_ARG_LEN];
-  char* k_ptrs[MAX_ARGS];
+  char *k_ptrs[MAX_ARGS];
 
   int argc = 0;
   for (int i = 0; i < MAX_ARGS; i++) {
@@ -128,7 +135,8 @@ int handle_exec(const char *path, char* const argv[]) {
       break;
     }
 
-    if (copy_from_user(kva_pgd, (void*)user_argv[i], k_argv[i], MAX_ARG_LEN) < 0) 
+    if (copy_from_user(kva_pgd, (void *)user_argv[i], k_argv[i], MAX_ARG_LEN) <
+        0)
       return -1;
 
     k_ptrs[i] = k_argv[i];
@@ -164,22 +172,22 @@ int handle_exec(const char *path, char* const argv[]) {
     size_t len = strlen(k_ptrs[i]) + 1;
     sp -= len;
 
-    copy_to_user(kva_pgd, (void*)sp, k_ptrs[i], len);
+    copy_to_user(kva_pgd, (void *)sp, k_ptrs[i], len);
     user_ptrs[i] = sp;
   }
 
   user_ptrs[argc] = 0;
   sp -= (argc + 1) * sizeof(uint64);
-  copy_to_user(kva_pgd, (void*)sp, user_ptrs, (argc + 1) * sizeof(uint64));
+  copy_to_user(kva_pgd, (void *)sp, user_ptrs, (argc + 1) * sizeof(uint64));
 
   uint64 argv_user = sp;
 
   sp -= sizeof(uint64);
-  copy_to_user(kva_pgd, (void*)sp, &argc, sizeof(uint64));
+  copy_to_user(kva_pgd, (void *)sp, &argc, sizeof(uint64));
 
-  current_task->tf->x0 = argc; // arg count
+  current_task->tf->x0 = argc;      // arg count
   current_task->tf->x1 = argv_user; // char** strings
-  sp &= ~0xFULL; // align
+  sp &= ~0xFULL;                    // align
   current_task->tf->sp_el0 = sp;
   return 0;
 }
@@ -303,7 +311,6 @@ int handle_pipe(int p[]) {
 int handle_open(const char *path, int flags) {
   if (!path)
     return -1;
-  
 
   char buf[MAX_PATH];
   pte_t *kva_pgd = (pte_t *)PA_TO_KVA(current_task->pgd);
@@ -343,7 +350,10 @@ int handle_mkdir(const char *path) {
   char *dir_name;
 
   if (!last_slash || last_slash == buf) { // parent is root
-    parent_cluster = (last_slash == buf) ? root_cluster : (current_task ? current_task->cwd_cluster : root_cluster);
+    parent_cluster =
+        (last_slash == buf)
+            ? root_cluster
+            : (current_task ? current_task->cwd_cluster : root_cluster);
     dir_name = (last_slash == buf) ? buf + 1 : buf;
   } else {
     *last_slash = '\0';
@@ -387,8 +397,7 @@ int handle_unlink(const char *path) {
     if (path_lookup(buf, &parent, NULL) != 0) {
       return -1;
     }
-    parent_cluster = (parent.high_entry_first_cluster << 16) |
-                     parent.low_entry_first_cluster;
+    parent_cluster = (parent.high_entry_first_cluster << 16) | parent.low_entry_first_cluster;
   }
 
   return fat32_unlink(parent_cluster, dir_name);
@@ -403,7 +412,6 @@ int handle_chdir(const char *path) {
   if (strncpy_from_user(kva_pgd, path, buf, MAX_PATH) < 0)
     return -1;
 
-
   fat32_dir_entry result;
   uint32 parent_cluster;
 
@@ -413,8 +421,10 @@ int handle_chdir(const char *path) {
   if (result.attribute != DIRECTORY)
     return -1;
 
-  uint32 new_cluster = (result.high_entry_first_cluster << 16) | (result.low_entry_first_cluster);
-  if (new_cluster == 0) new_cluster = root_cluster;
+  uint32 new_cluster = (result.high_entry_first_cluster << 16) |
+                       (result.low_entry_first_cluster);
+  if (new_cluster == 0)
+    new_cluster = root_cluster;
   current_task->cwd_cluster = new_cluster;
   return 0;
 }
@@ -492,7 +502,7 @@ int handle_getcwd(void *buffer, size_t len) {
 
   int final_len = MAX_PATH - pos;
 
-  if (final_len > (int) len)
+  if (final_len > (int)len)
     return -1;
 
   pte_t *kva_pgd = (pte_t *)PA_TO_KVA(current_task->pgd);
@@ -500,4 +510,23 @@ int handle_getcwd(void *buffer, size_t len) {
     return -1;
 
   return final_len;
+}
+
+int handle_dup2(int oldfd, int newfd) {
+  if (oldfd < 0 || oldfd >= MAX_FDS || newfd < 0 || newfd >= MAX_FDS) 
+    return -1;
+
+  file* old = current_task->fd_table[oldfd];
+  if (!old) return -1;
+
+  if (oldfd == newfd) return newfd;
+
+  if (current_task->fd_table[newfd]) {
+    file_close(current_task->fd_table[newfd]);
+  }
+
+  current_task->fd_table[newfd] = old;
+  file_ref(old);
+
+  return newfd;
 }

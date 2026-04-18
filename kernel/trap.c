@@ -127,6 +127,13 @@ void kernelvec_sync(struct trapframe *tf) {
       break;
     }
 
+    case SYS_DUP2: {
+      int oldfd = (int)tf->x0;
+      int newfd = (int)tf->x1;
+      tf->x0 = handle_dup2(oldfd, newfd);
+      break;
+    }
+
     default: {
       kprintf("Syscall does not exist\n");
       break;
