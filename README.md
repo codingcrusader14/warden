@@ -6,11 +6,11 @@ The reason I first set out to build an OS was because I was simply curious on wh
 
 ## Steps to build 
 To download and build through Qemu, follow the steps below.
-'''
+```
 git clone https://github.com/codingcrusader14/warden.git 
 make clean 
 make all
 make qemu
-'''
+```
 It is assumed that Qemu and an Arm cross compiler is installed on your system. 
 
